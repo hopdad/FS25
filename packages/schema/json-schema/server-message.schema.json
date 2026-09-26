@@ -1,0 +1,1194 @@
+{
+  "title": "server-message",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "hello"
+        },
+        "bridgeVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "bridgeVersion"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "status"
+        },
+        "status": {
+          "type": "object",
+          "properties": {
+            "bridgeVersion": {
+              "type": "string"
+            },
+            "gameOnline": {
+              "type": "boolean"
+            },
+            "saveId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "saveName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "singleplayer",
+                    "host",
+                    "dedicated"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "modVersion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "gameVersion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "bridgeVersion",
+            "gameOnline",
+            "saveId",
+            "saveName",
+            "mode",
+            "modVersion",
+            "gameVersion"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "type",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "channel"
+            },
+            "channel": {
+              "type": "string",
+              "const": "vehicle"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "v": {
+                  "type": "number",
+                  "const": 1
+                },
+                "saveId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "sessionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "realTs": {
+                  "type": "string",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "minute": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1439
+                },
+                "vehicle": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "vehicleId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "speedKmh": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "rpm": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "gear": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fuelType": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "fuelPct": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "damagePct": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "operatingHours": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "position": {
+                          "type": "object",
+                          "properties": {
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "z": {
+                              "type": "number"
+                            },
+                            "heading": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMaximum": 360
+                            }
+                          },
+                          "required": [
+                            "x",
+                            "z"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "isAI": {
+                          "type": "boolean"
+                        },
+                        "fillUnits": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fillType": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "level": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "capacity": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "fillType",
+                              "level",
+                              "capacity"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "implements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "vehicleId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 128
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "fillUnits": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "fillType": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "level": {
+                                      "type": "number",
+                                      "minimum": 0
+                                    },
+                                    "capacity": {
+                                      "anyOf": [
+                                        {
+                                          "type": "number",
+                                          "minimum": 0
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "fillType",
+                                    "level",
+                                    "capacity"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "vehicleId",
+                              "name",
+                              "fillUnits"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "vehicleId",
+                        "name",
+                        "speedKmh",
+                        "rpm",
+                        "gear",
+                        "fuelType",
+                        "fuelPct",
+                        "damagePct",
+                        "operatingHours",
+                        "position",
+                        "isAI",
+                        "fillUnits",
+                        "implements"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "v",
+                "saveId",
+                "sessionId",
+                "realTs",
+                "day",
+                "minute",
+                "vehicle"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "type",
+            "channel",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "channel"
+            },
+            "channel": {
+              "type": "string",
+              "const": "fleet"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "v": {
+                  "type": "number",
+                  "const": 1
+                },
+                "saveId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "sessionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "realTs": {
+                  "type": "string",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "minute": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1439
+                },
+                "fleet": {
+                  "type": "object",
+                  "properties": {
+                    "vehicles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "vehicleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "farmId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "position": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              },
+                              "z": {
+                                "type": "number"
+                              },
+                              "heading": {
+                                "type": "number",
+                                "minimum": 0,
+                                "exclusiveMaximum": 360
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "z"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "fuelPct": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "damagePct": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "controller": {
+                            "type": "string",
+                            "enum": [
+                              "player",
+                              "ai",
+                              "courseplay",
+                              "autodrive",
+                              "idle"
+                            ]
+                          },
+                          "attachedTo": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "vehicleId",
+                          "name",
+                          "farmId",
+                          "position",
+                          "fuelPct",
+                          "damagePct",
+                          "controller",
+                          "attachedTo"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "jobs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "jobId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "vehicleId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "farmId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "jobType": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "helper": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fieldId": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "progressPct": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tankFillPct": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+                          }
+                        },
+                        "required": [
+                          "jobId",
+                          "vehicleId",
+                          "farmId",
+                          "jobType",
+                          "helper",
+                          "fieldId",
+                          "progressPct",
+                          "tankFillPct",
+                          "startedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "stops": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "stopId": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "jobId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "vehicleId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "farmId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "jobType": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "helper": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "durationMin": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "realTs": {
+                            "type": "string",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+                          },
+                          "day": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "minute": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1439
+                          }
+                        },
+                        "required": [
+                          "stopId",
+                          "jobId",
+                          "vehicleId",
+                          "farmId",
+                          "jobType",
+                          "helper",
+                          "reason",
+                          "durationMin",
+                          "realTs",
+                          "day",
+                          "minute"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "vehicles",
+                    "jobs",
+                    "stops"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "v",
+                "saveId",
+                "sessionId",
+                "realTs",
+                "day",
+                "minute",
+                "fleet"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "type",
+            "channel",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "channel"
+            },
+            "channel": {
+              "type": "string",
+              "const": "farm"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "v": {
+                  "type": "number",
+                  "const": 1
+                },
+                "saveId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "sessionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "realTs": {
+                  "type": "string",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "minute": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1439
+                },
+                "farm": {
+                  "type": "object",
+                  "properties": {
+                    "farms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "farmId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "balance": {
+                            "type": "number"
+                          },
+                          "loan": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "storage": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "fillType": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "liters": {
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "fillType",
+                                "liters"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "productions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "stocks": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "fillType": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "liters": {
+                                        "type": "number",
+                                        "minimum": 0
+                                      }
+                                    },
+                                    "required": [
+                                      "fillType",
+                                      "liters"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "stocks"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "farmId",
+                          "name",
+                          "balance",
+                          "loan",
+                          "storage",
+                          "productions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "weather": {
+                      "type": "object",
+                      "properties": {
+                        "current": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SUN",
+                                    "PARTIALLY_CLOUDY",
+                                    "CLOUDY",
+                                    "RAIN",
+                                    "SNOW",
+                                    "HAIL",
+                                    "TWISTER",
+                                    "THUNDER",
+                                    "UNKNOWN"
+                                  ]
+                                },
+                                "temperatureC": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "temperatureC"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "forecast": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "SUN",
+                                  "PARTIALLY_CLOUDY",
+                                  "CLOUDY",
+                                  "RAIN",
+                                  "SNOW",
+                                  "HAIL",
+                                  "TWISTER",
+                                  "THUNDER",
+                                  "UNKNOWN"
+                                ]
+                              },
+                              "minC": {
+                                "type": "number"
+                              },
+                              "maxC": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "type",
+                              "minC",
+                              "maxC"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "current",
+                        "forecast"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "farms",
+                    "weather"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "v",
+                "saveId",
+                "sessionId",
+                "realTs",
+                "day",
+                "minute",
+                "farm"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "type",
+            "channel",
+            "data"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "alert"
+        },
+        "alert": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "worker_stop",
+                "fuel_low",
+                "tank_full_soon",
+                "game_offline"
+              ]
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "info",
+                "warning",
+                "critical"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "vehicleId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "jobId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "severity",
+            "title",
+            "message",
+            "vehicleId",
+            "jobId",
+            "at"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "type",
+        "alert"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "alerts"
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "worker_stop",
+                  "fuel_low",
+                  "tank_full_soon",
+                  "game_offline"
+                ]
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "info",
+                  "warning",
+                  "critical"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "vehicleId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "jobId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "severity",
+              "title",
+              "message",
+              "vehicleId",
+              "jobId",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "type",
+        "alerts"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

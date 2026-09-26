@@ -92,6 +92,58 @@ describe("Clock", function()
         end)
     end)
 
+    describe("epoch seconds", function()
+        it("converts RFC 3339 with or without an offset", function()
+            assert.are.equal(0, Clock.toEpochSeconds("1970-01-01T00:00:00Z"))
+            assert.are.equal(
+                Clock.toEpochSeconds("2026-09-26T15:04:05Z"),
+                Clock.toEpochSeconds("2026-09-26T11:04:05-04:00")
+            )
+            assert.are.equal(Clock.toEpochSeconds("2026-09-26T15:04:05Z"), Clock.toEpochSeconds("2026-09-26T15:04:05.123Z"))
+            local seconds, hasOffset = Clock.toEpochSeconds("2026-09-26T11:04:05")
+            assert.is_number(seconds)
+            assert.is_false(hasOffset)
+        end)
+
+        it("reads only the wall clock when asked to ignore the offset", function()
+            assert.are.equal(
+                Clock.toEpochSeconds("2026-09-26T11:04:05"),
+                Clock.toEpochSeconds("2026-09-26T11:04:05-04:00", true)
+            )
+        end)
+
+        it("follows the Gregorian leap-year rules", function()
+            local day = 86400
+            assert.are.equal(day, Clock.toEpochSeconds("2024-03-01T00:00:00Z") - Clock.toEpochSeconds("2024-02-29T00:00:00Z"))
+            assert.are.equal(day, Clock.toEpochSeconds("2100-03-01T00:00:00Z") - Clock.toEpochSeconds("2100-02-28T00:00:00Z"))
+            assert.are.equal(2 * day, Clock.toEpochSeconds("2000-03-01T00:00:00Z") - Clock.toEpochSeconds("2000-02-28T00:00:00Z"))
+        end)
+
+        it("rejects anything that is not a timestamp", function()
+            assert.is_nil(Clock.toEpochSeconds("yesterday"))
+            assert.is_nil(Clock.toEpochSeconds("2026-09-26T11:04:05+0400"))
+            assert.is_nil(Clock.toEpochSeconds(nil))
+        end)
+
+        it("measures a bridge timestamp's age against the game clock, offset or not", function()
+            _G.getDate = function(format)
+                if format == "%z" then
+                    return "-0400"
+                end
+                return "2026-09-26T11:05:00"
+            end
+            assert.are.equal(55, Clock.secondsSince("2026-09-26T11:04:05-04:00"))
+            assert.are.equal(55, Clock.secondsSince("2026-09-26T15:04:05Z"))
+            _G.getDate = function(format)
+                if format == "%z" then
+                    return "Eastern Daylight Time"
+                end
+                return "2026-09-26T11:05:00"
+            end
+            assert.are.equal(55, Clock.secondsSince("2026-09-26T11:04:05-04:00"))
+        end)
+    end)
+
     it("reports a precise timer and its name", function()
         local ms, name = Clock.preciseMs()
         assert.is_number(ms)

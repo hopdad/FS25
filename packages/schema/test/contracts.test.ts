@@ -32,7 +32,8 @@ const envelope = (type: string, data: unknown, seq = 1042) => ({
   data,
 });
 
-const header = { v: 1, saveId: SAVE, realTs: TS, day: 37, minute: 845 };
+const SESSION = "0d3c9a4e-7b1f-4e2a-9c8d-5f6e7a8b9c0d";
+const header = { v: 1, saveId: SAVE, sessionId: SESSION, realTs: TS, day: 37, minute: 845 };
 
 const tractor = {
   vehicleId: "vehicle7f3a",
@@ -195,16 +196,35 @@ describe("live channels", () => {
             fuelPct: 8.5,
             damagePct: 0,
             controller: "ai",
+            attachedTo: null,
           },
         ],
         jobs: [
           {
             jobId: "9",
             vehicleId: "v14",
+            farmId: 1,
             jobType: "FIELDWORK",
+            helper: "Alex",
             fieldId: 12,
             progressPct: null,
             tankFillPct: 91,
+            startedAt: TS,
+          },
+        ],
+        stops: [
+          {
+            stopId: 1,
+            jobId: "8",
+            vehicleId: "v15",
+            farmId: 1,
+            jobType: "FIELDWORK",
+            helper: "Sam",
+            reason: "ERROR_OUT_OF_FUEL",
+            durationMin: 42.5,
+            realTs: TS,
+            day: 37,
+            minute: 840,
           },
         ],
       },
@@ -212,16 +232,35 @@ describe("live channels", () => {
     const farm = {
       ...header,
       farm: {
-        farmId: 1,
-        balance: 1250000,
-        loan: 0,
-        storage: [{ fillType: "WHEAT", liters: 180000 }],
-        productions: [],
-        weather: { current: { type: "SUN", temperatureC: 21 }, forecast: [] },
+        farms: [
+          {
+            farmId: 1,
+            name: "Hopson Farms",
+            balance: 1250000,
+            loan: 0,
+            storage: [{ fillType: "WHEAT", liters: 180000 }],
+            productions: [
+              {
+                id: "placeable7",
+                name: "Grain Mill",
+                stocks: [{ fillType: "FLOUR", liters: 3000 }],
+              },
+            ],
+          },
+        ],
+        weather: {
+          current: { type: "SUN", temperatureC: 21 },
+          forecast: [{ day: 38, type: "RAIN", minC: 9, maxC: 17 }],
+        },
       },
     };
-    expect(LiveFleet.safeParse(fleet).success).toBe(true);
-    expect(LiveFarm.safeParse(farm).success).toBe(true);
+    expect(LiveFleet.safeParse(fleet).error?.issues ?? []).toEqual([]);
+    expect(LiveFarm.safeParse(farm).error?.issues ?? []).toEqual([]);
+  });
+
+  it("requires the session id that tells a restarted game apart", () => {
+    const { sessionId: _, ...withoutSession } = header;
+    expect(LiveVehicle.safeParse({ ...withoutSession, vehicle: null }).success).toBe(false);
   });
 });
 

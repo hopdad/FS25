@@ -1,9 +1,10 @@
 -- A stand-in for the FS25 engine, enough to run FarmLink's Lua outside the game: under busted for the
--- specs, and from sim/run.lua for the end-to-end test that validates the mod's files against
--- packages/schema. It mirrors the API shapes recorded in docs/VERIFY_FIRST.md; it does not model the
--- game's behavior beyond that.
+-- specs, and from sim/run.lua for the end-to-end tests that check the mod's files against
+-- packages/schema and drive the command channel with files the bridge wrote. It mirrors the API
+-- shapes recorded in docs/VERIFY_FIRST.md; it does not model the game's behavior beyond that.
 
 local lfs = require("lfs")
+local Xml = require("xml")
 
 local Engine = {}
 
@@ -37,6 +38,12 @@ function Engine.readFile(path)
     return text
 end
 
+function Engine.writeFile(path, text)
+    local file = assert(io.open(path, "w"))
+    file:write(text)
+    file:close()
+end
+
 -- Utils -------------------------------------------------------------------------------------------
 
 local Utils = {}
@@ -67,65 +74,106 @@ function Utils.overwrittenFunction(oldFunc, newFunc)
     end
 end
 
--- XMLFile: a key-value store written as "path<TAB>value" lines. Not XML; only the API shape matters.
+-- XMLFile, backed by a real XML document (sim/xml.lua) -----------------------------------------------
 
 local XMLFile = {}
 XMLFile.__index = XMLFile
 
 function XMLFile.create(_objectName, path, rootName)
-    return setmetatable({ path = path, root = rootName, values = {} }, XMLFile)
+    return setmetatable({ path = path, root = Xml.newRoot(rootName) }, XMLFile)
 end
 
+---nil for a missing or unparsable file, as the game does.
 function XMLFile.loadIfExists(_objectName, path)
     local text = Engine.readFile(path)
     if text == nil then
         return nil
     end
-    local xml = setmetatable({ path = path, values = {} }, XMLFile)
-    for line in text:gmatch("[^\n]+") do
-        local key, value = line:match("^([^\t]+)\t(.*)$")
-        if key ~= nil then
-            xml.values[key] = value
+    local ok, root = pcall(Xml.parse, text)
+    if not ok then
+        return nil
+    end
+    return setmetatable({ path = path, root = root }, XMLFile)
+end
+
+function XMLFile:getString(path, default)
+    local value = Xml.get(self.root, path)
+    if value == nil then
+        return default
+    end
+    return value
+end
+
+function XMLFile:getInt(path, default)
+    local value = tonumber(Xml.get(self.root, path))
+    if value == nil then
+        return default
+    end
+    return math.floor(value)
+end
+
+function XMLFile:getFloat(path, default)
+    local value = tonumber(Xml.get(self.root, path))
+    if value == nil then
+        return default
+    end
+    return value
+end
+
+function XMLFile:getBool(path, default)
+    local value = Xml.get(self.root, path)
+    if value == "true" then
+        return true
+    elseif value == "false" then
+        return false
+    end
+    return default
+end
+
+function XMLFile:setString(path, value)
+    Xml.set(self.root, path, tostring(value))
+end
+
+function XMLFile:setInt(path, value)
+    Xml.set(self.root, path, string.format("%d", value))
+end
+
+function XMLFile:setFloat(path, value)
+    Xml.set(self.root, path, string.format("%.6g", value))
+end
+
+function XMLFile:setBool(path, value)
+    Xml.set(self.root, path, value and "true" or "false")
+end
+
+function XMLFile:hasProperty(path)
+    local node, attribute = Xml.resolve(self.root, path, false)
+    if node == nil then
+        return false
+    end
+    if attribute ~= nil then
+        return node.attributes[attribute] ~= nil
+    end
+    return true
+end
+
+---Calls fn(index, key) for base(0), base(1), ... while they exist; index counts from 1.
+function XMLFile:iterate(basePath, fn)
+    local i = 0
+    while true do
+        local key = string.format("%s(%d)", basePath, i)
+        if not self:hasProperty(key) then
+            return
         end
+        if fn(i + 1, key) == false then
+            return
+        end
+        i = i + 1
     end
-    return xml
-end
-
-function XMLFile:setString(key, value)
-    self.values[key] = tostring(value)
-end
-
-function XMLFile:setInt(key, value)
-    self.values[key] = string.format("%d", value)
-end
-
-function XMLFile:getString(key, default)
-    local value = self.values[key]
-    if value == nil then
-        return default
-    end
-    return value
-end
-
-function XMLFile:getInt(key, default)
-    local value = tonumber(self.values[key])
-    if value == nil then
-        return default
-    end
-    return value
 end
 
 function XMLFile:save()
-    local keys = {}
-    for key in pairs(self.values) do
-        keys[#keys + 1] = key
-    end
-    table.sort(keys)
-    local file = assert(io.open(self.path, "w"))
-    for _, key in ipairs(keys) do
-        file:write(key, "\t", self.values[key], "\n")
-    end
-    file:close()
+    Engine.writeFile(self.path, Xml.serialize(self.root))
 end
 
 function XMLFile:delete() end
@@ -168,8 +216,8 @@ end
 local Farm = {}
 Farm.__index = Farm
 
-function Farm.new(farmId, balance)
-    return setmetatable({ farmId = farmId, money = balance, loan = 0 }, Farm)
+function Farm.new(farmId, balance, name)
+    return setmetatable({ farmId = farmId, money = balance, loan = 0, name = name }, Farm)
 end
 
 function Farm:changeBalance(amount, _moneyType)
@@ -180,13 +228,37 @@ function Farm:getBalance()
     return self.money
 end
 
--- Vehicles ----------------------------------------------------------------------------------------
+local function newFarmManager()
+    local manager = { farms = {}, byId = {} }
+    function manager:add(farm)
+        self.farms[#self.farms + 1] = farm
+        self.byId[farm.farmId] = farm
+        return farm
+    end
+    function manager:getFarms()
+        return self.farms
+    end
+    function manager:getFarmById(farmId)
+        return self.byId[farmId]
+    end
+    manager:add(Farm.new(0, 0, "Spectator"))
+    manager:add(Farm.new(1, 100000, "Hopson Farms"))
+    return manager
+end
 
-local FILL_TYPES = { "UNKNOWN", "DIESEL", "WHEAT", "DEF", "AIR", "SEEDS", "BARLEY" }
+-- Fill types --------------------------------------------------------------------------------------
+
+local FILL_TYPES = { "UNKNOWN", "DIESEL", "WHEAT", "DEF", "AIR", "SEEDS", "BARLEY", "FLOUR" }
 local FILL_TYPE_INDEX = {}
 for index, name in ipairs(FILL_TYPES) do
     FILL_TYPE_INDEX[name] = index
 end
+
+-- Vehicles ----------------------------------------------------------------------------------------
+
+-- vehicles/VehiclePropertyState.lua
+local PROPERTY_OWNED = 2
+local PROPERTY_LEASED = 3
 
 local Vehicle = {}
 Vehicle.__index = Vehicle
@@ -217,6 +289,18 @@ end
 
 function Vehicle:getIsAIActive()
     return self.isAI == true
+end
+
+function Vehicle:getOwnerFarmId()
+    return self.farmId
+end
+
+function Vehicle:getRootVehicle()
+    return self.rootVehicle or self
+end
+
+function Vehicle:getShowInVehiclesOverview()
+    return self.listed ~= false and (self.propertyState == PROPERTY_OWNED or self.propertyState == PROPERTY_LEASED)
 end
 
 function Vehicle:getFillUnitCapacity(index)
@@ -254,8 +338,15 @@ function Motor:getGearToDisplay()
     return self.gear
 end
 
+local function adopt(vehicle, root)
+    for _, implement in ipairs(vehicle.implements) do
+        implement.rootVehicle = root
+        adopt(implement, root)
+    end
+end
+
 ---A vehicle with the specs FarmLink reads. opts.fillUnits entries are { fillType, level, capacity };
----opts.fuel is { fillType, level, capacity } and becomes a motor consumer.
+---opts.fuel is { fillType, level, capacity } and makes it motorized. opts.implements are attached.
 function Engine.newVehicle(opts)
     local vehicle = setmetatable({
         uniqueId = opts.uniqueId,
@@ -266,6 +357,9 @@ function Engine.newVehicle(opts)
         damage = opts.damage,
         isAI = opts.isAI,
         motorState = opts.motorState or 4,
+        farmId = opts.farmId or 1,
+        listed = opts.listed,
+        propertyState = opts.propertyState or PROPERTY_OWNED,
         implements = opts.implements or {},
         rootNode = {
             x = opts.x or 0,
@@ -275,6 +369,8 @@ function Engine.newVehicle(opts)
             dirZ = opts.dirZ or -1,
         },
     }, Vehicle)
+    vehicle.rootVehicle = vehicle
+    adopt(vehicle, vehicle)
 
     local units = {}
     for _, unit in ipairs(opts.fillUnits or {}) do
@@ -296,8 +392,19 @@ function Engine.newVehicle(opts)
             propellantFillUnitIndices = { #units },
         }
         vehicle.motor = setmetatable({ rpm = opts.rpm or 0, gear = opts.gear }, Motor)
+        vehicle.spec_enterable = { isControlled = opts.entered == true, isEntered = opts.entered == true }
     end
     vehicle.spec_fillUnit = { fillUnits = units }
+    return vehicle
+end
+
+---Adds a vehicle and everything attached to it to the mission's vehicle list.
+function Engine.addVehicle(vehicle)
+    local list = g_currentMission.vehicleSystem.vehicles
+    list[#list + 1] = vehicle
+    for _, implement in ipairs(vehicle.implements) do
+        Engine.addVehicle(implement)
+    end
     return vehicle
 end
 
@@ -313,12 +420,19 @@ end
 
 Engine.AIMessages = {
     ERROR_OUT_OF_FUEL = messageClass("ERROR_OUT_OF_FUEL"),
+    ERROR_UNLOADINGSTATION_FULL = messageClass("ERROR_UNLOADINGSTATION_FULL"),
+    SUCCESS_FINISHED_JOB = messageClass("SUCCESS_FINISHED_JOB"),
     SUCCESS_STOPPED_BY_USER = messageClass("SUCCESS_STOPPED_BY_USER"),
 }
 
 local function newAIMessageManager()
     local manager = { messages = {} }
-    for _, name in ipairs({ "ERROR_OUT_OF_FUEL", "SUCCESS_STOPPED_BY_USER" }) do
+    for _, name in ipairs({
+        "ERROR_OUT_OF_FUEL",
+        "ERROR_UNLOADINGSTATION_FULL",
+        "SUCCESS_FINISHED_JOB",
+        "SUCCESS_STOPPED_BY_USER",
+    }) do
         manager.messages[#manager.messages + 1] = { name = name, classObject = Engine.AIMessages[name] }
     end
     function manager:getMessageIndex(message)
@@ -333,28 +447,78 @@ local function newAIMessageManager()
     return manager
 end
 
-function Engine.newJob(jobId, vehicle, farmId)
-    return {
+---The AI system's start and stop paths: both publish the same messages the game does.
+local function newAISystem()
+    local system = { activeJobs = {}, nextJobId = 1 }
+    function system:getActiveJobs()
+        return self.activeJobs
+    end
+    function system:getJobById(jobId)
+        for _, job in ipairs(self.activeJobs) do
+            if job.jobId == jobId then
+                return job
+            end
+        end
+        return nil
+    end
+    function system:startJob(job, startFarmId)
+        if job.jobId == nil then
+            job.jobId = self.nextJobId
+        end
+        self.nextJobId = math.max(self.nextJobId, job.jobId) + 1
+        job.startedFarmId = startFarmId
+        self.activeJobs[#self.activeJobs + 1] = job
+        if job.vehicle ~= nil then
+            job.vehicle.isAI = true
+        end
+        g_messageCenter:publish(MessageType.AI_JOB_STARTED, job, startFarmId)
+    end
+    function system:stopJob(job, aiMessage)
+        for i, active in ipairs(self.activeJobs) do
+            if active == job then
+                table.remove(self.activeJobs, i)
+                break
+            end
+        end
+        if job.vehicle ~= nil then
+            job.vehicle.isAI = false
+        end
+        g_messageCenter:publish(MessageType.AI_JOB_STOPPED, job, aiMessage)
+    end
+    return system
+end
+
+---A field-work job for a vehicle. jobId may be nil; the AI system assigns one on start.
+function Engine.newJob(jobId, vehicle, farmId, opts)
+    opts = opts or {}
+    local job = {
         jobId = jobId,
         jobTypeIndex = 1,
         startedFarmId = farmId or 1,
+        vehicle = vehicle,
         vehicleParameter = {
             getVehicle = function()
                 return vehicle
             end,
         },
-        getHelperName = function()
-            return "Alex"
-        end,
+        positionAngleParameter = {
+            getPosition = function()
+                return opts.x or 10, opts.z or 10
+            end,
+        },
     }
+    function job:getHelperName()
+        return opts.helper or "Alex"
+    end
+    return job
 end
 
 function Engine.startJob(job)
-    g_messageCenter:publish(MessageType.AI_JOB_STARTED, job, job.startedFarmId)
+    g_currentMission.aiSystem:startJob(job, job.startedFarmId)
 end
 
 function Engine.stopJob(job, message)
-    g_messageCenter:publish(MessageType.AI_JOB_STOPPED, job, message)
+    g_currentMission.aiSystem:stopJob(job, message)
 end
 
 -- Mission -----------------------------------------------------------------------------------------
@@ -370,13 +534,53 @@ function Mission:addMoney(amount, farmId, moneyType, _addChange, _forceShowChang
     if farmId == 0 then
         return
     end
-    local farm = self.farms[farmId]
+    local farm = g_farmManager:getFarmById(farmId)
     if farm ~= nil then
         farm:changeBalance(amount, moneyType)
     end
 end
 
+local function storage(levels, ownerFarmId)
+    return {
+        ownerFarmId = ownerFarmId,
+        getFillLevels = function()
+            local out = {}
+            for name, liters in pairs(levels) do
+                out[FILL_TYPE_INDEX[name]] = liters
+            end
+            return out
+        end,
+    }
+end
+
 local function newMission(opts)
+    local farmManager = newFarmManager()
+    g_farmManager = farmManager
+
+    local silo = {
+        spec_silo = {
+            storages = {
+                storage({ WHEAT = 180000.44, BARLEY = 0 }, nil),
+                -- A shared silo keeps one storage per farm; farm 2's grain is not farm 1's.
+                storage({ WHEAT = 5000 }, 2),
+            },
+        },
+        getOwnerFarmId = function()
+            return 1
+        end,
+    }
+    local mill = {
+        owningPlaceable = {
+            getUniqueId = function()
+                return "placeable7"
+            end,
+        },
+        storage = storage({ FLOUR = 3000, WHEAT = 0 }, nil),
+        getName = function()
+            return "Grain Mill"
+        end,
+    }
+
     local mission = setmetatable({
         isServer = opts.isServer ~= false,
         missionInfo = {
@@ -394,17 +598,34 @@ local function newMission(opts)
             currentDayInPeriod = 1,
             daysPerPeriod = 3,
             dayTime = opts.dayTimeMs or (14 * 3600000 + 5 * 60000),
+            weather = {
+                forecast = {
+                    getCurrentWeather = function()
+                        return { forecastType = 1, temperature = 21.26 }
+                    end,
+                    getDailyForecast = function(_self, offset)
+                        return {
+                            day = (opts.day or 37) + offset,
+                            forecastType = 4,
+                            lowTemperature = 9,
+                            highTemperature = 17,
+                        }
+                    end,
+                },
+            },
         },
-        farms = { [1] = Farm.new(1, 100000) },
+        farms = farmManager.byId,
         vehicleSystem = { vehicles = {} },
-        aiSystem = {
-            stopJobById = function()
-                return true
-            end,
-            getActiveJobs = function()
+        placeableSystem = { placeables = { silo } },
+        productionChainManager = {
+            getProductionPointsForFarmId = function(_self, farmId)
+                if farmId == 1 then
+                    return { mill }
+                end
                 return {}
             end,
         },
+        aiSystem = newAISystem(),
         aiMessageManager = newAIMessageManager(),
         aiJobTypeManager = {
             jobTypes = { { name = "FIELDWORK" } },
@@ -503,7 +724,14 @@ function Engine.install(opts)
     end
 
     _G.XMLFile = XMLFile
-    MessageType = { HOUR_CHANGED = 1, DAY_CHANGED = 2, PERIOD_CHANGED = 3, AI_JOB_STARTED = 101, AI_JOB_STOPPED = 102, AI_JOB_REMOVED = 103 }
+    MessageType = {
+        HOUR_CHANGED = 1,
+        DAY_CHANGED = 2,
+        PERIOD_CHANGED = 3,
+        AI_JOB_STARTED = 101,
+        AI_JOB_STOPPED = 102,
+        AI_JOB_REMOVED = 103,
+    }
     g_messageCenter = MessageCenter.new()
     MoneyType = {
         OTHER = { id = 1, title = "finance_other", statistic = "other" },
@@ -513,12 +741,13 @@ function Engine.install(opts)
         register = function() end,
     }
     _G.Farm = Farm
+    g_farmManager = nil
+    AIMessageSuccessStoppedByUser = Engine.AIMessages.SUCCESS_STOPPED_BY_USER
     FSCareerMissionInfo = {
         saveToXMLFile = function(_missionInfo)
             Engine.saveCalls = Engine.saveCalls + 1
         end,
     }
-    Engine.combineTypeHooks = {}
     Combine = {
         addCutterArea = function(_self, _area, liters)
             return liters

@@ -1,0 +1,132 @@
+{
+  "title": "commands-file",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": {
+      "type": "number",
+      "const": 1
+    },
+    "epoch": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "v": {
+                "type": "number",
+                "const": 1
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "issuedAt": {
+                "type": "string",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+              },
+              "ttlSec": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600
+              },
+              "farmId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "type": {
+                "type": "string",
+                "const": "ping"
+              },
+              "args": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "v",
+              "id",
+              "issuedAt",
+              "ttlSec",
+              "farmId",
+              "type",
+              "args"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "v": {
+                "type": "number",
+                "const": 1
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "issuedAt": {
+                "type": "string",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+              },
+              "ttlSec": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600
+              },
+              "farmId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "type": {
+                "type": "string",
+                "const": "worker.stop"
+              },
+              "args": {
+                "type": "object",
+                "properties": {
+                  "jobId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "jobId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "v",
+              "id",
+              "issuedAt",
+              "ttlSec",
+              "farmId",
+              "type",
+              "args"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "v",
+    "epoch",
+    "commands"
+  ],
+  "additionalProperties": false
+}

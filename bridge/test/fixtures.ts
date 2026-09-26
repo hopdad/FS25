@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 export const SAVE_ID = "6f1c2d3e-4a5b-4c6d-8e7f-0123456789ab";
 export const BRANCH_ID = "a02e7c1d-9b8a-4f6e-a5d4-c3b2a1908f7e";
+export const SESSION_ID = "0d3c9a4e-7b1f-4e2a-9c8d-5f6e7a8b9c0d";
 
 export function tempRoot(): string {
   return mkdtempSync(join(tmpdir(), "farmlink-"));
@@ -32,6 +33,7 @@ export function frame(vehicle: unknown = null, minute = 845) {
   return {
     v: 1,
     saveId: SAVE_ID,
+    sessionId: SESSION_ID,
     realTs: "2026-09-26T11:04:05-04:00",
     day: 37,
     minute,

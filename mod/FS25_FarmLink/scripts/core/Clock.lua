@@ -113,6 +113,74 @@ function Clock.realTimestamp()
     return base
 end
 
+-- Days since 1970-01-01 for a proleptic Gregorian date (Howard Hinnant's days_from_civil).
+local function daysFromCivil(year, month, day)
+    if month <= 2 then
+        year = year - 1
+    end
+    local era = math.floor(year / 400)
+    local yearOfEra = year - era * 400
+    local shiftedMonth = (month + 9) % 12
+    local dayOfYear = math.floor((153 * shiftedMonth + 2) / 5) + day - 1
+    local dayOfEra = yearOfEra * 365 + math.floor(yearOfEra / 4) - math.floor(yearOfEra / 100) + dayOfYear
+    return era * 146097 + dayOfEra - 719468
+end
+
+---Seconds since 1970 for an RFC 3339 timestamp, and whether it carried an offset. With
+---ignoreOffset, or when the string has none, the wall-clock fields are read as they stand: the way
+---two local times written on the same machine compare.
+---@param timestamp string
+---@param ignoreOffset boolean|nil
+---@return number|nil seconds, boolean hasOffset
+function Clock.toEpochSeconds(timestamp, ignoreOffset)
+    if type(timestamp) ~= "string" then
+        return nil, false
+    end
+    local y, mo, d, h, mi, s, rest = timestamp:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)T(%d%d):(%d%d):(%d%d)(.*)$")
+    if y == nil then
+        return nil, false
+    end
+    local fraction, zone = rest:match("^(%.%d+)(.*)$")
+    if fraction ~= nil then
+        rest = zone
+    end
+    local offset = 0
+    local hasOffset = false
+    if rest == "Z" then
+        hasOffset = true
+    elseif rest ~= "" then
+        local sign, offsetHours, offsetMinutes = rest:match("^([+-])(%d%d):(%d%d)$")
+        if sign == nil then
+            return nil, false
+        end
+        offset = (tonumber(offsetHours) * 3600 + tonumber(offsetMinutes) * 60) * (sign == "-" and -1 or 1)
+        hasOffset = true
+    end
+    local seconds = daysFromCivil(tonumber(y), tonumber(mo), tonumber(d)) * 86400
+        + tonumber(h) * 3600
+        + tonumber(mi) * 60
+        + tonumber(s)
+    if hasOffset and not ignoreOffset then
+        seconds = seconds - offset
+    end
+    return seconds, hasOffset
+end
+
+---How many seconds ago a timestamp written by the bridge was, by this game's clock. Both run on one
+---machine, so when the game's clock has no offset the local wall-clock fields compare directly.
+---@param timestamp string
+---@return number|nil
+function Clock.secondsSince(timestamp)
+    local now = Clock.realTimestamp()
+    local _, nowHasOffset = Clock.toEpochSeconds(now)
+    local nowSeconds = Clock.toEpochSeconds(now, not nowHasOffset)
+    local thenSeconds = Clock.toEpochSeconds(timestamp, not nowHasOffset)
+    if nowSeconds == nil or thenSeconds == nil then
+        return nil
+    end
+    return nowSeconds - thenSeconds
+end
+
 -- Candidate precise timers, first available wins. Looked up on every call because engine globals
 -- are resolved at run time, not when this file is sourced. The P0 probe records each candidate's
 -- raw value so the units can be confirmed in the game.

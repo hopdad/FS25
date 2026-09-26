@@ -12,6 +12,11 @@
       "format": "uuid",
       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
     },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
     "realTs": {
       "type": "string",
       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
@@ -104,6 +109,18 @@
                   "autodrive",
                   "idle"
                 ]
+              },
+              "attachedTo": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
@@ -113,7 +130,8 @@
               "position",
               "fuelPct",
               "damagePct",
-              "controller"
+              "controller",
+              "attachedTo"
             ],
             "additionalProperties": false
           }
@@ -133,9 +151,20 @@
                 "minLength": 1,
                 "maxLength": 128
               },
+              "farmId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
               "jobType": {
                 "type": "string",
                 "minLength": 1
+              },
+              "helper": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "fieldId": {
                 "anyOf": [
@@ -172,15 +201,110 @@
                     "type": "null"
                   }
                 ]
+              },
+              "startedAt": {
+                "type": "string",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
               }
             },
             "required": [
               "jobId",
               "vehicleId",
+              "farmId",
               "jobType",
+              "helper",
               "fieldId",
               "progressPct",
-              "tankFillPct"
+              "tankFillPct",
+              "startedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "stops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stopId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "jobId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "vehicleId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "farmId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "jobType": {
+                "type": "string",
+                "minLength": 1
+              },
+              "helper": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "durationMin": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "realTs": {
+                "type": "string",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+              },
+              "day": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "minute": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1439
+              }
+            },
+            "required": [
+              "stopId",
+              "jobId",
+              "vehicleId",
+              "farmId",
+              "jobType",
+              "helper",
+              "reason",
+              "durationMin",
+              "realTs",
+              "day",
+              "minute"
             ],
             "additionalProperties": false
           }
@@ -188,7 +312,8 @@
       },
       "required": [
         "vehicles",
-        "jobs"
+        "jobs",
+        "stops"
       ],
       "additionalProperties": false
     }
@@ -196,6 +321,7 @@
   "required": [
     "v",
     "saveId",
+    "sessionId",
     "realTs",
     "day",
     "minute",

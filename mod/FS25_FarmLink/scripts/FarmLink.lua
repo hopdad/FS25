@@ -20,10 +20,17 @@ local SOURCES = {
     "scripts/core/Clock.lua",
     "scripts/core/FileIO.lua",
     "scripts/core/Ids.lua",
+    "scripts/core/Game.lua",
     "scripts/core/Registry.lua",
     "scripts/core/Persistence.lua",
     "scripts/core/Meta.lua",
+    "scripts/hooks/AIWorkers.lua",
     "scripts/collectors/Vehicle.lua",
+    "scripts/collectors/Fleet.lua",
+    "scripts/collectors/Farm.lua",
+    "scripts/commands/CommandChannel.lua",
+    "scripts/commands/handlers/Ping.lua",
+    "scripts/commands/handlers/WorkerStop.lua",
     "scripts/probe/Probe.lua",
 }
 
@@ -36,7 +43,12 @@ local Log = FarmLink.Log
 if FarmLink.registry == nil then
     FarmLink.registry = FarmLink.Registry.new(Log)
     FarmLink.registry:add(FarmLink.Meta)
+    -- Workers first: the fleet channel reads the worker registry.
+    FarmLink.registry:add(FarmLink.AIWorkers)
     FarmLink.registry:add(FarmLink.VehicleCollector)
+    FarmLink.registry:add(FarmLink.Fleet)
+    FarmLink.registry:add(FarmLink.FarmCollector)
+    FarmLink.registry:add(FarmLink.CommandChannel)
     if FarmLink.Probe.ENABLED then
         FarmLink.registry:add(FarmLink.Probe)
     end
@@ -115,6 +127,7 @@ function FarmLink.buildContext(mission)
         baseDirSource = baseDirSource,
         saveDir = baseDir .. ledger.saveId .. "/",
         ledger = ledger,
+        sessionId = FarmLink.Ids.uuid4(),
         savegameDirectory = info.savegameDirectory,
         saveName = info.savegameName,
         savegameIndex = info.savegameIndex,

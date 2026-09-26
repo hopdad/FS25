@@ -1,5 +1,5 @@
 -- farmLink.xml in the savegame folder: the ledger identity, which has to travel with the save and roll
--- back with it. P0 stores saveId and branchId; P2 adds the seq high-water, the command watermark,
+-- back with it. It stores saveId, branchId and the command watermark; P2 adds the seq high-water,
 -- aggregates and the worker registry.
 --
 -- Read when the mission loads and written from FSCareerMissionInfo.saveToXMLFile (hooked once in
@@ -27,7 +27,7 @@ end
 
 ---Reads the ledger identity for a savegame, or creates a new one.
 ---@param savegameDirectory string|nil
----@return table ledger { saveId, branchId, isNew, loadedFrom }
+---@return table ledger { saveId, branchId, isNew, loadedFrom, commandEpoch, commandWatermark }
 function Persistence.load(savegameDirectory)
     local Ids = FarmLink.Ids
     local ledger = { isNew = true, loadedFrom = nil }
@@ -38,12 +38,18 @@ function Persistence.load(savegameDirectory)
         if xml ~= nil then
             local saveId = xml:getString(Persistence.ROOT .. ".save#id")
             local branchId = xml:getString(Persistence.ROOT .. ".save#branchId")
+            local commandEpoch = xml:getString(Persistence.ROOT .. ".commands#epoch")
+            local commandWatermark = xml:getInt(Persistence.ROOT .. ".commands#watermark")
             xml:delete()
             if Ids.isUuid(saveId) and Ids.isUuid(branchId) then
                 ledger.saveId = saveId
                 ledger.branchId = branchId
                 ledger.isNew = false
                 ledger.loadedFrom = path
+                if Ids.isUuid(commandEpoch) and type(commandWatermark) == "number" then
+                    ledger.commandEpoch = commandEpoch
+                    ledger.commandWatermark = commandWatermark
+                end
             else
                 FarmLink.Log.warning("%s has no valid ids; starting a new ledger", path)
             end
@@ -77,6 +83,10 @@ function Persistence.save(savegameDirectory, ledger)
         xml:setInt(Persistence.ROOT .. "#format", Persistence.FORMAT)
         xml:setString(Persistence.ROOT .. ".save#id", ledger.saveId)
         xml:setString(Persistence.ROOT .. ".save#branchId", ledger.branchId)
+        if ledger.commandEpoch ~= nil then
+            xml:setString(Persistence.ROOT .. ".commands#epoch", ledger.commandEpoch)
+            xml:setInt(Persistence.ROOT .. ".commands#watermark", ledger.commandWatermark or 0)
+        end
         xml:save()
     end)
     xml:delete()
