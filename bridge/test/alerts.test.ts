@@ -1,6 +1,6 @@
-import { type Alert, LiveFleet } from "@farmlink/schema";
+import { type Alert, describeReason, LiveFleet } from "@farmlink/schema";
 import { describe, expect, it } from "vitest";
-import { AlertEngine, describeReason, tankEtaSeconds } from "../src/live/alerts";
+import { AlertEngine, tankEtaSeconds } from "../src/live/alerts";
 import { aiJob, combineRow, fleetFrame, SESSION_ID, stopEntry, tractorRow } from "./fixtures";
 
 // TS in the fixtures is 15:04:05Z; "now" is 55 s later.

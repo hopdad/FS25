@@ -172,3 +172,7 @@ export type LiveFarm = z.infer<typeof LiveFarm>;
 export type WorkerStopEntry = z.infer<typeof WorkerStopEntry>;
 export type ActiveJob = z.infer<typeof ActiveJob>;
 export type FleetVehicle = z.infer<typeof FleetVehicle>;
+export type VehicleState = z.infer<typeof VehicleState>;
+export type ImplementState = z.infer<typeof ImplementState>;
+export type FarmState = z.infer<typeof FarmState>;
+export type Stock = z.infer<typeof Stock>;

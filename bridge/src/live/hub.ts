@@ -90,6 +90,11 @@ export class LiveHub {
     this.broadcast(encode({ type: "status", status: next }));
   }
 
+  /** Sends the status again even though it has not changed, so pages can tell a live connection from a dead one. */
+  repeatStatus(): void {
+    this.broadcast(encode({ type: "status", status: this.status }));
+  }
+
   publish<C extends ChannelName>(channel: C, data: Channels[C]): void {
     const text = JSON.stringify({ type: "channel", channel, data });
     this.frames.set(channel, text);

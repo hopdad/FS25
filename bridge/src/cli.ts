@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { PAGE_HTML } from "@farmlink/live-ui/page";
 import { FILES, LIVE_PORT, LiveVehicle } from "@farmlink/schema";
 import { currentEnvironment, type Environment, resolveRoot } from "./config";
 import { formatDoctor, runDoctor } from "./doctor";
@@ -97,11 +98,8 @@ export async function follow(
   if (current) io.err(`stopped; ${JSON.stringify(current.watcher.stats)}`);
 }
 
-const PLACEHOLDER_PAGE =
-  '<!doctype html><meta charset="utf-8"><title>FarmLink</title><p>The live page is not built yet.';
-
 export interface MainOptions {
-  /** The phone page's HTML. */
+  /** The phone page's HTML; the built live-ui page by default. */
   page?: string;
   onListening?: ServeOptions["onListening"];
 }
@@ -162,7 +160,7 @@ export async function main(
       stateDir: values.state,
       resetToken: values["reset-token"],
       qr: !values["no-qr"],
-      page: options.page ?? PLACEHOLDER_PAGE,
+      page: options.page ?? PAGE_HTML,
       onListening: options.onListening,
     },
     io,

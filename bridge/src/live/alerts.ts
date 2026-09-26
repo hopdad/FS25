@@ -1,57 +1,12 @@
-import type { Alert, AlertSeverity, FleetVehicle, LiveFleet } from "@farmlink/schema";
+import {
+  type Alert,
+  describeReason,
+  type FleetVehicle,
+  type LiveFleet,
+  stopSeverity,
+  USER_STOPPED,
+} from "@farmlink/schema";
 import { parseGameTimestamp } from "../time";
-
-/** The reason the game records when the player stops a worker; every other stop raises an alert. */
-export const USER_STOPPED = "SUCCESS_STOPPED_BY_USER";
-
-// Names registered in FS25's AIMessageManager (VERIFY_FIRST.md, 6), in words for the phone.
-const REASONS: Record<string, string> = {
-  ERROR_BLOCKED_BY_OBJECT: "blocked by an object",
-  ERROR_COULD_NOT_PREPARE: "could not prepare the job",
-  ERROR_FIELD_NOT_OWNED: "the field is not owned",
-  ERROR_FIELD_NOT_READY: "the field is not ready",
-  ERROR_GRAINTANK_IS_FULL: "grain tank full",
-  ERROR_IMPLEMENT_WRONG_WAY: "implement facing the wrong way",
-  ERROR_LOADING_STATION_DELETED: "loading station removed",
-  ERROR_NO_FIELD_FOUND: "no field found",
-  ERROR_NO_PALLETS_LOADED: "no pallets loaded",
-  ERROR_NO_VALID_FILLTYPE_LOADED: "nothing usable loaded",
-  ERROR_NO_VINE_FOUND: "no vines found",
-  ERROR_NOT_REACHABLE: "target not reachable",
-  ERROR_OUT_OF_FILL: "ran out of seed, fertilizer or other material",
-  ERROR_OUT_OF_FUEL: "out of fuel",
-  ERROR_OUT_OF_MONEY: "the farm is out of money",
-  ERROR_PALLETS_FULL: "pallets full",
-  ERROR_THRESHING_NOT_ALLOWED: "threshing not allowed right now",
-  ERROR_UNKNOWN: "unknown error",
-  ERROR_UNLOADING_STATION_DELETED: "unloading station removed",
-  ERROR_UNLOADINGSTATION_FULL: "unloading station full",
-  ERROR_WRONG_SEASON: "wrong season for this work",
-  ERROR_VEHICLE_BROKEN: "vehicle broken down",
-  ERROR_VEHICLE_DELETED: "vehicle removed",
-  ERROR_VINEYARD_NOT_SUPPORTED: "vineyard not supported",
-  SUCCESS_FINISHED_JOB: "job finished",
-  SUCCESS_SILO_EMPTY: "silo empty",
-  SUCCESS_STOPPED_BY_USER: "stopped by the player",
-  UNKNOWN: "stopped without a reason",
-};
-
-/** A stop reason in words; names the game adds later fall back to their own words. */
-export function describeReason(reason: string): string {
-  return (
-    REASONS[reason] ??
-    reason
-      .replace(/^(ERROR|SUCCESS)_/, "")
-      .toLowerCase()
-      .replace(/_/g, " ")
-  );
-}
-
-function stopSeverity(reason: string): AlertSeverity {
-  if (reason.startsWith("SUCCESS_")) return "info";
-  if (reason.startsWith("ERROR_")) return "critical";
-  return "warning";
-}
 
 /** `FIELDWORK` → `fieldwork job`, for a stop whose vehicle is gone from the fleet. */
 function describeJobType(jobType: string): string {

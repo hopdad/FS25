@@ -20,6 +20,8 @@ export interface ServerOptions {
   port?: number;
   /** How often to ping each page; one that misses a pong by the next ping is dropped. */
   pingMs?: number;
+  /** How often to repeat the status to every page, which pages use to spot a dead connection. */
+  statusRepeatMs?: number;
   log?: (line: string) => void;
 }
 
@@ -231,17 +233,25 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     ws.on("error", () => ws.terminate());
   };
 
+  const repeater = setInterval(() => hub.repeatStatus(), options.statusRepeatMs ?? 10_000);
+
   await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
+    const failed = (error: Error) => {
+      clearInterval(repeater);
+      reject(error);
+    };
+    server.once("error", failed);
     server.listen(options.port ?? LIVE_PORT, options.host ?? "0.0.0.0", () => {
-      server.off("error", reject);
+      server.off("error", failed);
       resolve();
     });
   });
+  server.on("error", (error) => log(`server error: ${error.message}`));
 
   return {
     port: (server.address() as AddressInfo).port,
     close: async () => {
+      clearInterval(repeater);
       for (const ws of sockets.clients) ws.terminate();
       sockets.close();
       const closed = new Promise<void>((resolve) => server.close(() => resolve()));
