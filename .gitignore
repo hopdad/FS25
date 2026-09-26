@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# build outputs
+/mod/build/
+/bridge/bin/
+
+# local game files used for testing, never committed
+/local/

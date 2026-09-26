@@ -163,8 +163,12 @@ All additive or naming-level.
 - **C5. Stop reasons.** Stop reasons are the names registered with `aiMessageManager`.
 - **C6. Live channel payloads.** Each payload is nested under the channel name (`vehicle`, `fleet`,
   `farm`), so "on foot" is `"vehicle": null` rather than a frame with missing keys.
-- **C7. New optional fields.** `money.count` for coalesced entries (F3); `session.parentBranchId`
-  and `session.forkSeq` (F2); `meta.heads` (F2); `meta.stats` for write-timing diagnostics.
+- **C7. Field changes.**
+  - Events: `money.count` for coalesced entries (F3); `session.parentBranchId` and
+    `session.forkSeq` (F2); `vehicleId` on `worker_stop` and `farmlandId` on `field_work`, matching
+    `worker_start` and `harvest`; `price` becomes one `prices` event per day holding every entry (F3).
+  - `meta.json`: `heads` (F2); `beat`, a counter for liveness (F1); `mode`, `saveName` and
+    `savegameIndex` for the bridge; `stats` for write-timing diagnostics.
 
 ## Inconsistencies in the handoff
 

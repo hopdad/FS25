@@ -1,0 +1,7 @@
+packages:
+  - bridge
+  - web
+  - packages/*
+
+onlyBuiltDependencies:
+  - esbuild

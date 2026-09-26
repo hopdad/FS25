@@ -1,0 +1,22 @@
+{
+  "name": "farmlink",
+  "private": true,
+  "description": "FS25 FarmLink: a multiplayer-safe farm ledger mod, its local bridge and web app",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "test:lua": "cd mod && busted",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:lua"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "typescript": "~6.0.3"
+  }
+}

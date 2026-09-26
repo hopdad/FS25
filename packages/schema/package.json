@@ -1,0 +1,23 @@
+{
+  "name": "@farmlink/schema",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zod definitions for every FarmLink file format, with JSON Schema export",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p .",
+    "json-schema": "tsx scripts/export-json-schema.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.2"
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "title": "live-farm",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": {
+      "type": "number",
+      "const": 1
+    },
+    "saveId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "realTs": {
+      "type": "string",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
+    },
+    "day": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "minute": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1439
+    },
+    "farm": {
+      "type": "object",
+      "properties": {
+        "farmId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "balance": {
+          "type": "number"
+        },
+        "loan": {
+          "type": "number",
+          "minimum": 0
+        },
+        "storage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fillType": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "liters": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "fillType",
+              "liters"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "productions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "stocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fillType": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "liters": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "fillType",
+                    "liters"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "stocks"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "weather": {
+          "type": "object",
+          "properties": {
+            "current": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "temperatureC": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "temperatureC"
+              ],
+              "additionalProperties": false
+            },
+            "forecast": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "day": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "minC": {
+                    "type": "number"
+                  },
+                  "maxC": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "day",
+                  "type",
+                  "minC",
+                  "maxC"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "current",
+            "forecast"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "farmId",
+        "balance",
+        "loan",
+        "storage",
+        "productions",
+        "weather"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "v",
+    "saveId",
+    "realTs",
+    "day",
+    "minute",
+    "farm"
+  ],
+  "additionalProperties": false
+}
