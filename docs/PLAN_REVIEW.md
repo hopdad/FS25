@@ -182,6 +182,7 @@ All additive or naming-level.
 | I6 | Envelope example | `"userId": "steam:7656..."` | Opaque `uniqueUserId` (C4) |
 | I7 | Supabase sync | Hourly snapshots from a 60 s file | Daily snapshot (F3) |
 | I8 | Commands example | `"jobId": "j9"` | FS25 job ids are numbers; the schema takes a string and the mod stringifies |
+| I9 | Bridge readers | "No `meta.json` update for 15 s marks the game offline", but `meta.json` is written every 60 s | The bridge uses the 1 s `live_vehicle.json` as the liveness signal (adopted) |
 
 ## Risks to add
 

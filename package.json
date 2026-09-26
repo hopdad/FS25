@@ -2,7 +2,6 @@
   "name": "farmlink",
   "private": true,
   "description": "FS25 FarmLink: a multiplayer-safe farm ledger mod, its local bridge and web app",
-  "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22.12"

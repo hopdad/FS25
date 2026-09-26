@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, typecheck and test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Lua 5.1 and busted
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lua5.1 lua-busted lua-dkjson lua-filesystem
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: TypeScript tests (includes the Lua-to-schema end-to-end test)
+        run: pnpm test
+      - name: Lua specs
+        run: pnpm test:lua
+
+  package:
+    name: Build the mod zip and the Windows bridge
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+
+      - run: pnpm install --frozen-lockfile
+      - run: node mod/tools/package.mjs
+      - run: pnpm --filter @farmlink/bridge build:win
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: farmlink-p0
+          path: |
+            mod/build/FS25_FarmLink.zip
+            bridge/bin/farmlink-bridge.exe
+          if-no-files-found: error
