@@ -37,6 +37,9 @@ function findLua51(): string | undefined {
 }
 
 const lua = findLua51();
+if (!lua && process.env.REQUIRE_LUA) {
+  throw new Error("REQUIRE_LUA is set, but no Lua 5.1 interpreter was found");
+}
 
 interface SimSummary {
   saveId: string;
@@ -122,6 +125,8 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       environment: { platform: "linux", home: "/nonexistent", env: {} },
       dir: profile,
       observeMs: 0,
+      stateDir: tempRoot(),
+      serverPort: null,
     });
     const status = Object.fromEntries(report.checks.map((c) => [c.id, c.status]));
     expect(status).toEqual({
@@ -136,7 +141,13 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       item6: "pass",
       item7: "pass",
       item9: "pass",
+      fleet: "pass",
+      farm: "pass",
+      commands: "pending",
+      heartbeat: "pending",
+      server: "pending",
     });
+    expect(report.live.fleet.stops).toMatchObject([{ helper: "Sam", reason: "ERROR_OUT_OF_FUEL" }]);
   });
 });
 
@@ -171,5 +182,22 @@ describe.skipIf(!lua)("a worker stop sent by the bridge and run by the mod's Lua
     ]);
     const alerts = new AlertEngine().onFleet(fleet, Date.now());
     expect(alerts.filter((a) => a.kind === "worker_stop")).toEqual([]);
+
+    // --doctor sees the round trip.
+    const report = await runDoctor({
+      environment: { platform: "linux", home: "/nonexistent", env: {} },
+      dir: profile,
+      observeMs: 0,
+      stateDir: state.dir,
+      serverPort: null,
+    });
+    const commands = report.checks.find((c) => c.id === "commands");
+    expect(commands).toMatchObject({ status: "pass", phase: "P1" });
+    expect(commands?.detail).toBe("the mod answered up to id 1; last: 1 ok");
+    expect(report.live.bridgeState).toMatchObject({
+      commandEpoch: state.commandEpoch,
+      nextCommandId: 2,
+    });
+    expect(JSON.stringify(report)).not.toContain(state.pairingToken);
   });
 });

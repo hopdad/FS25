@@ -1,9 +1,11 @@
+import { join } from "node:path";
 import { type CommandRequest, type CommandResponse, LIVE_PORT } from "@farmlink/schema";
 import type { Io } from "./cli";
 import { type Environment, resolveRoot } from "./config";
 import { type RunningServer, startServer } from "./http/server";
 import { LiveHub } from "./live/hub";
 import { SaveSession } from "./live/session";
+import { fileLogger } from "./logfile";
 import { lanAddresses, pageUrl, terminalQr } from "./net";
 import { BridgeState, defaultStateDir } from "./state";
 import { BRIDGE_VERSION } from "./version";
@@ -39,8 +41,14 @@ export async function serve(
   const { root, source } = resolveRoot(environment, options.dir);
   const state = new BridgeState(options.stateDir ?? defaultStateDir(environment));
   if (options.resetToken) state.resetPairingToken();
+  // Everything but the banner also goes to bridge.log; the banner holds the pairing link.
+  const toFile = fileLogger(join(state.dir, "bridge.log"));
+  const log = (line: string) => {
+    io.err(line);
+    toFile(line);
+  };
 
-  const hub = new LiveHub((alert) => io.err(`alert: ${alert.title}: ${alert.message}`));
+  const hub = new LiveHub((alert) => log(`alert: ${alert.title}: ${alert.message}`));
   let session: SaveSession | undefined;
   const sendCommand = (request: CommandRequest): Promise<CommandResponse> =>
     session
@@ -56,16 +64,14 @@ export async function serve(
       sendCommand,
       host: options.host,
       port: options.port,
-      log: io.err,
+      log,
     });
   } catch (error) {
     const port = options.port ?? LIVE_PORT;
     if ((error as NodeJS.ErrnoException).code === "EADDRINUSE") {
-      io.err(
-        `port ${port} is in use: is another FarmLink bridge running? Pick another with --port.`,
-      );
+      log(`port ${port} is in use: is another FarmLink bridge running? Pick another with --port.`);
     } else {
-      io.err(`could not listen on port ${port}: ${(error as Error).message}`);
+      log(`could not listen on port ${port}: ${(error as Error).message}`);
     }
     return 1;
   }
@@ -75,9 +81,9 @@ export async function serve(
   const urls = (hosts.length > 0 ? hosts : ["localhost"]).map((host) =>
     pageUrl(host, server.port, state.pairingToken),
   );
-  io.err(`FarmLink bridge ${BRIDGE_VERSION}: reading ${root} (${source})`);
+  log(`FarmLink bridge ${BRIDGE_VERSION}: reading ${root} (${source}); log in ${state.dir}`);
   if (options.resetToken) {
-    io.err("new pairing token: pages opened with the old link must be reopened");
+    log("new pairing token: pages opened with the old link must be reopened");
   }
   io.out("Open the live page on your phone, on the same Wi-Fi as this computer:");
   for (const url of urls) io.out(`  ${url}`);
@@ -102,19 +108,19 @@ export async function serve(
     if (!save) {
       if (!session && !waitingShown) {
         waitingShown = true;
-        io.err("waiting for the game: no save folders yet (enable FS25_FarmLink and load a save)");
+        log("waiting for the game: no save folders yet (enable FS25_FarmLink and load a save)");
       }
       return;
     }
     if (session?.saveId === save.saveId) return;
     session?.stop();
-    io.err(`following save ${save.saveId} (${save.meta?.saveName ?? "unnamed"})`);
+    log(`following save ${save.saveId} (${save.meta?.saveName ?? "unnamed"})`);
     session = new SaveSession({
       saveId: save.saveId,
       dir: save.dir,
       hub,
       numbering: state,
-      log: io.err,
+      log,
     });
     session.start();
   };
@@ -125,6 +131,6 @@ export async function serve(
   clearInterval(rescan);
   session?.stop();
   await server.close();
-  io.err("stopped");
+  log("stopped");
   return 0;
 }

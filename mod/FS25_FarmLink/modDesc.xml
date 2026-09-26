@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="96">
     <author>Derrick Hopson</author>
-    <version>0.1.0.0</version>
+    <version>0.2.0.0</version>
     <title>
         <en>FarmLink</en>
         <de>FarmLink</de>
@@ -9,12 +9,12 @@
     <description>
         <en><![CDATA[FarmLink records your farm's money, harvests, field work and hired workers as a durable ledger, for multiplayer and single-player saves.
 
-This is a development build (P0): it writes live vehicle data and a diagnostics report to modSettings/FS25_FarmLink/ and changes nothing in the game.
+This is a development build (P1): it writes live data about your vehicle, fleet, workers and farm to modSettings/FS25_FarmLink/ for the FarmLink bridge, which shows it on your phone. The only thing it changes in the game is stopping a hired worker when you tap Stop on the phone; it never starts, drives or buys anything.
 
 Source and issues: https://github.com/hopdad/FS25]]></en>
         <de><![CDATA[FarmLink erfasst Geld, Ernten, Feldarbeit und Helfer deines Hofs als dauerhaftes Hauptbuch, für Mehrspieler- und Einzelspieler-Spielstände.
 
-Dies ist eine Entwicklungsversion (P0): Sie schreibt Live-Fahrzeugdaten und einen Diagnosebericht nach modSettings/FS25_FarmLink/ und verändert nichts im Spiel.
+Dies ist eine Entwicklungsversion (P1): Sie schreibt Live-Daten zu deinem Fahrzeug, Fuhrpark, Helfern und Hof nach modSettings/FS25_FarmLink/ für die FarmLink-Bridge, die sie auf deinem Handy anzeigt. Im Spiel ändert sie nur eines: Sie hält einen Helfer an, wenn du auf dem Handy auf Stopp tippst. Sie startet, fährt oder kauft nie etwas.
 
 Quellcode und Fehlermeldungen: https://github.com/hopdad/FS25]]></de>
     </description>

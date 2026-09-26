@@ -1,8 +1,10 @@
 import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { FILES, LiveVehicle, ProbeReport } from "@farmlink/schema";
+import { FILES, LIVE_PORT, LiveVehicle, ProbeReport } from "@farmlink/schema";
 import { type Environment, type ResolvedRoot, resolveRoot } from "./config";
+import { collectLive, type LiveReport, liveChecks } from "./doctorLive";
+import { defaultStateDir } from "./state";
 import { BRIDGE_VERSION, runtimeName } from "./version";
 import { readJsonFile } from "./watch/files";
 import { LiveWatcher, type LiveWatcherStats } from "./watch/live";
@@ -20,6 +22,8 @@ export interface Check {
   title: string;
   status: CheckStatus;
   detail: string;
+  /** Checks without a phase belong to P0. */
+  phase?: "P1";
 }
 
 export interface DoctorReport {
@@ -40,6 +44,7 @@ export interface DoctorReport {
   activeSaveId: string | null;
   observation: (LiveWatcherStats & { durationMs: number }) | null;
   probe: { ageSec: number | null; error: string | null } | null;
+  live: LiveReport;
   checks: Check[];
   sync: string;
 }
@@ -49,6 +54,10 @@ export interface DoctorOptions {
   dir?: string;
   /** How long to watch live_vehicle.json when the game is running. 0 skips it. */
   observeMs?: number;
+  /** Where bridge-state.json lives; the user config folder by default. */
+  stateDir?: string;
+  /** Port to look for a running bridge on; null skips the check. */
+  serverPort?: number | null;
   now?: () => number;
 }
 
@@ -284,6 +293,13 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   }
   const probeData = probeRead.ok ? probeRead.value : undefined;
 
+  const live = await collectLive({
+    saveDir: active?.dir,
+    stateDir: options.stateDir ?? defaultStateDir(options.environment),
+    serverPort: options.serverPort === undefined ? LIVE_PORT : options.serverPort,
+    now: now(),
+  });
+
   const report: DoctorReport = {
     bridge: {
       version: BRIDGE_VERSION,
@@ -296,6 +312,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     activeSaveId: active?.saveId ?? null,
     observation,
     probe,
+    live,
     checks: [],
     sync: "not configured (arrives in P2)",
   };
@@ -314,6 +331,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
             detail: "no _probe/probe.json yet: load a savegame with the mod enabled",
           },
         ]),
+    ...liveChecks(live),
   ];
   return report;
 }
@@ -347,11 +365,25 @@ export function formatDoctor(report: DoctorReport): string {
       `Probe: _probe/probe.json ${report.probe.error ?? "ok"}, ${report.probe.ageSec ?? "-"} s old`,
     );
   }
-  lines.push("", "P0 exit criteria and verify-first items:");
-  for (const check of report.checks) {
-    lines.push(`  [${MARK[check.status]}] ${check.title}`);
-    lines.push(`         ${check.detail}`);
-  }
+  const section = (heading: string, checks: Check[]) => {
+    lines.push("", heading);
+    for (const check of checks) {
+      lines.push(`  [${MARK[check.status]}] ${check.title}`);
+      lines.push(`         ${check.detail}`);
+    }
+  };
+  section(
+    "P0 exit criteria and verify-first items:",
+    report.checks.filter((c) => c.phase === undefined),
+  );
+  section(
+    "P1 live page and commands:",
+    report.checks.filter((c) => c.phase === "P1"),
+  );
+  const state = report.live.bridgeState;
+  lines.push(
+    `  bridge-state.json: ${state.commandEpoch ? `epoch ${state.commandEpoch}, next command ${state.nextCommandId}` : "not created yet"} (${state.path})`,
+  );
   lines.push("", `Supabase sync: ${report.sync}`);
   return lines.join("\n");
 }

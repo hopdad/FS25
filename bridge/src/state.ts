@@ -26,6 +26,18 @@ export function defaultStateDir(environment: Environment): string {
   return join(env.XDG_CONFIG_HOME ?? join(home, ".config"), "farmlink");
 }
 
+/** Reads bridge-state.json without creating it, for --doctor. */
+export function readBridgeState(dir: string): BridgeStateFile | undefined {
+  try {
+    const parsed = BridgeStateFile.safeParse(
+      JSON.parse(readFileSync(join(dir, STATE_FILE), "utf8")),
+    );
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function newPairingToken(): string {
   return randomBytes(16).toString("base64url");
 }

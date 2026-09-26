@@ -35,6 +35,9 @@ function findChromium(): string | undefined {
 }
 
 const executablePath = findChromium();
+if (!executablePath && process.env.REQUIRE_BROWSER) {
+  throw new Error("REQUIRE_BROWSER is set, but no Chromium or Chrome was found");
+}
 
 describe.skipIf(!executablePath)("the phone page in a browser", { timeout: 30_000 }, () => {
   let browser: Browser;

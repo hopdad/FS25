@@ -135,7 +135,13 @@ export async function main(
       io.err("--observe takes a number of seconds");
       return 2;
     }
-    const report = await runDoctor({ environment, dir: values.dir, observeMs });
+    const report = await runDoctor({
+      environment,
+      dir: values.dir,
+      observeMs,
+      stateDir: values.state,
+      serverPort: values.port === undefined ? undefined : Number(values.port),
+    });
     io.out(values.json ? JSON.stringify(report, null, 2) : formatDoctor(report));
     return report.checks.some((c) => c.status === "fail") ? 1 : 0;
   }

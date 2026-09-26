@@ -11,7 +11,7 @@ FarmLink = FarmLink or {}
 
 FarmLink.MOD_NAME = g_currentModName or "FS25_FarmLink"
 FarmLink.MOD_DIR = g_currentModDirectory or ""
-FarmLink.VERSION = "0.1.0.0"
+FarmLink.VERSION = "0.2.0.0"
 FarmLink.SCHEMA_VERSION = 1
 
 local SOURCES = {

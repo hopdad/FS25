@@ -169,6 +169,18 @@ All additive or naming-level.
     `worker_start` and `harvest`; `price` becomes one `prices` event per day holding every entry (F3).
   - `meta.json`: `heads` (F2); `beat`, a counter for liveness (F1); `mode`, `saveName` and
     `savegameIndex` for the bridge; `stats` for write-timing diagnostics.
+- **C8. Whole frames on the WebSocket.** The handoff pushes "JSON diffs". The bridge sends each
+  channel frame whole instead: a vehicle frame is about 1 KB a second and a 100-machine fleet frame
+  about 10 KB every 5 s, which a LAN does not notice, and a whole frame cannot drift out of sync or
+  leave a reconnecting page half-filled. The bridge repeats its status every 10 s, so a page can
+  tell a quiet game from a dead connection.
+- **C9. Command channel files.** `commands.xml` (the last 20 commands and the bridge's epoch) and
+  `acks.json` (the last 50 acks and the mod's watermark) replace `commands.ndjson` and `acks.ndjson`
+  (F1). The bridge resolves each command from the ring, or answers `expired` 2 s after its TTL. It
+  also moves its counter past the mod's watermark when an older `bridge-state.json` comes back, so
+  the mod never ignores new commands as old ones.
+- **C10. Alerts name their farm.** `Alert.farmId`, so a multiplayer page shows only its own farm's
+  alerts. Game-wide alerts (`game_offline`) carry `null`.
 
 ## Inconsistencies in the handoff
 
@@ -199,6 +211,9 @@ All additive or naming-level.
 - **Supabase free plan.** Database size (F3), and free projects pause after a period of inactivity.
 - **First-run friction.** The bridge binds `0.0.0.0:8790`, so Windows Firewall prompts on first run,
   and an unsigned executable triggers SmartScreen. Document both, or budget for code signing.
+- **Pausing single-player.** If the game stops calling the mod's update while paused, the live
+  files stop, and after 15 s the page shows "Game offline" and raises an alert. The P1 test
+  records what happens; if it does, the vehicle frame can carry a paused flag set on the way in.
 - **Global saveIds.** `saves.id` is shared across all users, so a colliding saveId makes the second
   user's sync fail under RLS. The mod builds the id from `getMD5` over several entropy sources.
 
@@ -213,7 +228,7 @@ All additive or naming-level.
 
 ## What this branch builds
 
-P0 and its foundations, respecting the phase gate:
+**P0 and its foundations:**
 
 - The monorepo layout from the handoff.
 - `packages/schema`, holding every v1 file contract and its JSON Schema export.
@@ -225,4 +240,15 @@ P0 and its foundations, respecting the phase gate:
 - Lua specs under 5.1, Vitest suites, and an end-to-end test that runs the mod's Lua against
   stubbed engine calls and validates its files with the schema package.
 
-P1 does not start until the P0 exit criteria pass in the game ([P0_TEST.md](P0_TEST.md)).
+**P1, ahead of the P0 game session.** On Sep 26 the P0 in-game run had to wait for the PC, and
+P1 went ahead on the adopted defaults so the work could continue. Whatever that run turns up, F1
+in particular, may change P1 before its own in-game test ([P1_TEST.md](P1_TEST.md)).
+
+- Mod: `hooks/AIWorkers.lua` (running jobs and a ring of stops with their reasons), the fleet and
+  farm channels, and `commands/CommandChannel.lua` with `ping` and `worker.stop`.
+- Bridge: serves the phone page and WebSocket on port 8790 behind a pairing token, writes
+  commands and a heartbeat, resolves acks, raises the four alerts, and logs to `bridge.log`.
+  `--doctor` covers the channels and the command round trip.
+- `packages/live-ui`: the phone page, bundled into the bridge as one 47 KB HTML file.
+- Tests: the bridge's `worker.stop` run through the mod's Lua; the page in headless Chromium
+  against the real bridge; a smoke test of the compiled executable in CI.

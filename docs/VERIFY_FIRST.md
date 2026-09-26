@@ -115,10 +115,22 @@ and `renameFile` anyway.
   `(job, aiMessage)`. `MessageType.AI_JOB_REMOVED` follows with the job id. All three fire on the
   server and on clients.
 - **Stop reason name.** `local i = g_currentMission.aiMessageManager:getMessageIndex(aiMessage)`, then
-  `aiMessageManager.messages[i].name`. Registered names include `ERROR_OUT_OF_FUEL`,
-  `ERROR_OUT_OF_MONEY`, `ERROR_GRAINTANK_IS_FULL`, `ERROR_UNLOADINGSTATION_FULL` (the handoff's
-  `ERROR_UNLOADING_STATION_FULL` is misspelled), `SUCCESS_FINISHED_JOB` and `SUCCESS_STOPPED_BY_USER`.
-  `aiMessage` can be nil.
+  `aiMessageManager.messages[i].name`. `aiMessage` can be nil. `ai/errors/AIMessageManager.lua`
+  registers these names (the handoff's `ERROR_UNLOADING_STATION_FULL` is misspelled):
+  - Errors: `ERROR_BLOCKED_BY_OBJECT`, `ERROR_COULD_NOT_PREPARE`, `ERROR_FIELD_NOT_OWNED`,
+    `ERROR_FIELD_NOT_READY`, `ERROR_GRAINTANK_IS_FULL`, `ERROR_IMPLEMENT_WRONG_WAY`,
+    `ERROR_LOADING_STATION_DELETED`, `ERROR_NO_FIELD_FOUND`, `ERROR_NO_PALLETS_LOADED`,
+    `ERROR_NO_VALID_FILLTYPE_LOADED`, `ERROR_NO_VINE_FOUND`, `ERROR_NOT_REACHABLE`,
+    `ERROR_OUT_OF_FILL`, `ERROR_OUT_OF_FUEL`, `ERROR_OUT_OF_MONEY`, `ERROR_PALLETS_FULL`,
+    `ERROR_THRESHING_NOT_ALLOWED`, `ERROR_UNKNOWN`, `ERROR_UNLOADING_STATION_DELETED`,
+    `ERROR_UNLOADINGSTATION_FULL`, `ERROR_WRONG_SEASON`, `ERROR_VEHICLE_BROKEN`,
+    `ERROR_VEHICLE_DELETED`, `ERROR_VINEYARD_NOT_SUPPORTED`.
+  - Successes: `SUCCESS_FINISHED_JOB`, `SUCCESS_SILO_EMPTY`, `SUCCESS_STOPPED_BY_USER`.
+
+  The phone page words each one (`packages/schema/src/reasons.ts`); a name a mod adds falls back to
+  its own words.
+- **Job types.** `ai/AIJobTypeManager.lua` registers `GOTO`, `FIELDWORK`, `CONVEYOR`, `DELIVER` and
+  `LOAD_AND_DELIVER`.
 - **Stopping a job from code.** `g_currentMission.aiSystem:stopJobById(jobId, AIMessageSuccessStoppedByUser.new())`.
   On the server it stops the job and broadcasts `AIJobStopEvent`; on a client it sends a request.
 - **Job ids are per process.** `AISystem.NEXT_JOB_ID` is a counter, so a job id is not stable

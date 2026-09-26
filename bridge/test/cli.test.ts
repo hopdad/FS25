@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -101,8 +101,9 @@ describe("farmlink-bridge serving the phone page", () => {
 
   it("serves the page, prints the pairing link and follows the active save", async () => {
     const root = tempRoot();
+    const stateDir = tempRoot();
     writeSave(root, undefined, { "meta.json": meta(), "live_vehicle.json": frame(tractor) });
-    const { out, err, running, stop, info } = await serveOnce([], root, tempRoot());
+    const { out, err, running, stop, info } = await serveOnce([], root, stateDir);
 
     expect(info.urls).toEqual([`http://127.0.0.1:${info.port}/?t=${info.token}`]);
     expect(out).toContain(`  ${info.urls[0]}`);
@@ -121,6 +122,10 @@ describe("farmlink-bridge serving the phone page", () => {
     stop();
     expect(await running).toBe(0);
     expect(err.join("\n")).toMatch(/following save 6f1c2d3e/);
+    const log = readFileSync(join(stateDir, "bridge.log"), "utf8");
+    expect(log).toMatch(/^\d{4}-\d\d-\d\dT[\d:.]+Z FarmLink bridge /);
+    expect(log).toContain("following save 6f1c2d3e");
+    expect(log).not.toContain(info.token);
   });
 
   it("keeps the pairing token between runs until --reset-token", async () => {

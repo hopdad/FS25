@@ -10,7 +10,8 @@ Multiplayer is not part of P0.
 ## What the mod does during the test
 
 It only observes. It writes JSON files under `modSettings/FS25_FarmLink/` and `farmLink.xml` in the
-savegame folder, and changes nothing in the game. The P0 probe wraps `addMoney`, appends to
+savegame folder, and changes nothing in the game. (The P1 build can also stop a hired worker when
+you tap Stop on the phone; nothing in this script does that.) The P0 probe wraps `addMoney`, appends to
 `Farm.changeBalance` and registers over `Combine.addCutterArea` to count calls. Each hook calls the
 game's own function first and returns its result untouched. If anything in FarmLink fails, it logs the
 error to `log.txt` and switches that part off.
@@ -18,10 +19,14 @@ error to `log.txt` and switches that part off.
 ## 1. Get the files
 
 From GitHub: **Actions** → **CI** → the latest green run on `claude/repo-structure-build-plan-10lbox`
-→ **Artifacts** → `farmlink-p0`. It contains:
+→ **Artifacts** → `farmlink-p1`. It contains:
 
 - `mod/build/FS25_FarmLink.zip`: the mod.
 - `bridge/bin/farmlink-bridge.exe`: the bridge for Windows.
+
+The P1 build includes everything this script needs, so the same files serve the
+[P1 script](P1_TEST.md) afterwards. The older `farmlink-p0` artifact works for this script too; the
+one difference is noted in step 2.
 
 Or build them from a clone:
 
@@ -43,9 +48,10 @@ selection. Then:
 
 1. **Drive.** Get into a tractor and drive for a minute. This produces `live_vehicle.json`.
 2. **Start the bridge.** While still driving, open a terminal next to `farmlink-bridge.exe` and run
-   it with no arguments. It should print one line per second with speed, rpm, fuel and your
-   implements. Windows may show a SmartScreen warning because the file is unsigned: choose
-   **More info**, then **Run anyway**. Leave it running.
+   `farmlink-bridge.exe --print` (with the older `farmlink-p0` build, run it with no arguments). It
+   should print one line per second with speed, rpm, fuel and your implements. Windows may show a
+   SmartScreen warning because the file is unsigned: choose **More info**, then **Run anyway**.
+   Leave it running.
 3. **Move some money.** Buy fuel at a gas station, or sell anything at a selling point.
 4. **Hire a worker.** Start a helper on a field, let it work for a minute or two, then stop it
    yourself. If you can, also let one run out of fuel or fill its tank; different stop reasons help.
