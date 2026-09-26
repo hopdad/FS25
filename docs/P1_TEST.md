@@ -95,7 +95,8 @@ If something looks wrong on the phone, a screenshot helps.
 
 | What you see | What to check |
 | --- | --- |
-| The phone cannot open the page | Same Wi-Fi (not a guest network, which keeps devices apart)? Firewall allowed on private networks? Try the other links listed in the bridge window |
+| The phone cannot open the page | Same Wi-Fi (not a guest network, which keeps devices apart)? Firewall allowed on private networks, and Windows set to treat your Wi-Fi as a **Private** network (Settings → Network → your network → Network profile type)? Try the other links listed in the bridge window |
+| The QR code looks garbled | Type the link printed above it into the phone's browser |
 | **Link out of date** | The link was reset with `--reset-token`: scan the new code |
 | **Bridge not reachable** | The bridge window was closed, or the PC went to sleep |
 | **Game offline** while you play | Run `--doctor`: it shows whether `live_vehicle.json` is still being written |

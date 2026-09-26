@@ -66,10 +66,18 @@ function receive(state: LiveState, message: ServerMessage, now: number): LiveSta
     case "hello":
       return state;
     case "status": {
-      // Another save: its frames replace the old ones, which must not linger in between.
+      // Another save: nothing of the old one may linger while the new one's frames arrive.
       const otherSave = state.status !== null && state.status.saveId !== message.status.saveId;
       return otherSave
-        ? { ...state, status: message.status, vehicle: null, fleet: null, farm: null }
+        ? {
+            ...state,
+            status: message.status,
+            vehicle: null,
+            fleet: null,
+            farm: null,
+            alerts: [],
+            toasts: [],
+          }
         : { ...state, status: message.status };
     }
     case "channel":

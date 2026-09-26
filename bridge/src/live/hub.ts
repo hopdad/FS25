@@ -109,9 +109,10 @@ export class LiveHub {
     }
   }
 
-  /** Forgets the channel frames of a save the bridge no longer follows. Alerts stay: they are history. */
-  clearFrames(): void {
+  /** Forgets a save the bridge no longer follows: its frames and its alerts. */
+  reset(): void {
     this.frames.clear();
+    this.alerts = [];
   }
 
   private broadcast(text: string, droppable = false): void {

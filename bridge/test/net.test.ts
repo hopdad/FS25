@@ -17,15 +17,33 @@ function entry(address: string, family: "IPv4" | "IPv6" = "IPv4", internal = fal
 }
 
 describe("lanAddresses", () => {
-  it("lists reachable IPv4 addresses, private ranges first", () => {
+  it("lists reachable IPv4 addresses, the home network first", () => {
     const interfaces: Interfaces = {
       lo: [entry("127.0.0.1", "IPv4", true)],
       vpn: [entry("100.64.3.2")],
       eth0: [entry("192.168.1.23"), entry("fe80::1", "IPv6")],
-      wsl: [entry("172.20.0.1")],
+      office: [entry("10.1.2.3")],
       apipa: [entry("169.254.10.1")],
     };
-    expect(lanAddresses(interfaces)).toEqual(["192.168.1.23", "172.20.0.1", "100.64.3.2"]);
+    expect(lanAddresses(interfaces)).toEqual(["192.168.1.23", "10.1.2.3", "100.64.3.2"]);
+  });
+
+  it("puts virtual adapters last, whatever their range", () => {
+    // What Windows reports with WSL, Docker Desktop and Tailscale installed.
+    const interfaces: Interfaces = {
+      "vEthernet (WSL (Hyper-V firewall))": [entry("192.168.80.1")],
+      "vEthernet (Default Switch)": [entry("172.25.96.1")],
+      Tailscale: [entry("100.101.102.103")],
+      "Wi-Fi": [entry("192.168.1.23")],
+      Ethernet: [entry("172.20.10.4")],
+    };
+    expect(lanAddresses(interfaces)).toEqual([
+      "192.168.1.23",
+      "172.20.10.4",
+      "192.168.80.1",
+      "172.25.96.1",
+      "100.101.102.103",
+    ]);
   });
 
   it("returns nothing on a machine with no network", () => {

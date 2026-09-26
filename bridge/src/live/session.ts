@@ -159,7 +159,7 @@ export class SaveSession {
   stop(): void {
     for (const part of this.parts) part.stop();
     this.writer.close();
-    this.options.hub.clearFrames();
+    this.options.hub.reset();
   }
 
   /** Sends a command to the game, or rejects it at once while the game is not running. */

@@ -39,17 +39,60 @@ if (!executablePath && process.env.REQUIRE_BROWSER) {
   throw new Error("REQUIRE_BROWSER is set, but no Chromium or Chrome was found");
 }
 
+interface Bridge {
+  port: number;
+  token: string;
+  stop: () => Promise<number>;
+}
+
+/** Runs the bridge's serve mode in this process, as `farmlink-bridge` would. */
+async function startBridge(root: string, stateDir: string, port = 0): Promise<Bridge> {
+  let stop: () => void = () => {};
+  const stopped = new Promise<void>((resolve) => {
+    stop = resolve;
+  });
+  const io: Io = { out: () => {}, err: () => {}, stopSignal: () => stopped };
+  let running: Promise<number> = Promise.resolve(0);
+  const info = await new Promise<{ port: number; token: string }>((resolve) => {
+    running = main(
+      [
+        "--dir",
+        root,
+        "--state",
+        stateDir,
+        "--port",
+        String(port),
+        "--host",
+        "127.0.0.1",
+        "--no-qr",
+      ],
+      io,
+      { platform: "linux", home: "/nonexistent", env: {} },
+      { onListening: resolve },
+    );
+  });
+  return {
+    ...info,
+    stop: () => {
+      stop();
+      return running;
+    },
+  };
+}
+
 describe.skipIf(!executablePath)("the phone page in a browser", { timeout: 30_000 }, () => {
   let browser: Browser;
+  let root: string;
+  let stateDir: string;
   let saveDir: string;
   let base: string;
   let token: string;
-  let stopBridge: () => void = () => {};
-  let running: Promise<number>;
+  let bridge: Bridge;
   let game: NodeJS.Timeout;
 
   beforeAll(async () => {
-    const root = tempRoot();
+    root = tempRoot();
+    stateDir = tempRoot();
     saveDir = writeSave(root, SAVE_ID, {
       "meta.json": meta(),
       "live_fleet.json": fleetFrame({
@@ -68,29 +111,16 @@ describe.skipIf(!executablePath)("the phone page in a browser", { timeout: 30_00
     tick();
     game = setInterval(tick, 300);
 
-    const stopped = new Promise<void>((resolve) => {
-      stopBridge = resolve;
-    });
-    const io: Io = { out: () => {}, err: () => {}, stopSignal: () => stopped };
-    const listening = new Promise<{ port: number; token: string }>((resolve) => {
-      running = main(
-        ["--dir", root, "--state", tempRoot(), "--port", "0", "--host", "127.0.0.1", "--no-qr"],
-        io,
-        { platform: "linux", home: "/nonexistent", env: {} },
-        { onListening: resolve },
-      );
-    });
-    const info = await listening;
-    base = `http://127.0.0.1:${info.port}`;
-    token = info.token;
+    bridge = await startBridge(root, stateDir);
+    base = `http://127.0.0.1:${bridge.port}`;
+    token = bridge.token;
     browser = await chromium.launch({ executablePath });
   });
 
   afterAll(async () => {
     clearInterval(game);
     await browser?.close();
-    stopBridge();
-    await running;
+    await bridge.stop();
   });
 
   async function open(link: string): Promise<{ page: Page; errors: string[] }> {
@@ -144,6 +174,20 @@ describe.skipIf(!executablePath)("the phone page in a browser", { timeout: 30_00
     );
     await page.locator(".answer.ok", { hasText: "Stopped" }).waitFor();
     expect(errors).toEqual([]);
+  });
+
+  it("waits out a bridge restart and reconnects by itself", async () => {
+    const { page, errors } = await open(`${base}/?t=${token}`);
+    await page.getByText("Live", { exact: true }).waitFor();
+    expect(await bridge.stop()).toBe(0);
+    await page.getByText("Bridge not reachable").waitFor();
+
+    bridge = await startBridge(root, stateDir, bridge.port);
+    await page.getByText("Live", { exact: true }).waitFor({ timeout: 15_000 });
+    // The WebSocket failing while the bridge was down is expected noise, nothing else is.
+    expect(errors.filter((e) => !e.includes("WebSocket") && !e.includes("Failed to load"))).toEqual(
+      [],
+    );
   });
 
   it("tells a phone with an old link to scan the new code", async () => {

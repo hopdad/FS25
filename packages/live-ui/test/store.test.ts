@@ -31,7 +31,7 @@ describe("the page's state", () => {
     expect(state.alerts.map((a) => a.id)).toEqual(["stop:x:2"]);
   });
 
-  it("drops the old save's frames when the bridge follows another save", () => {
+  it("drops the old save's frames and alerts when the bridge follows another save", () => {
     const state = fullState();
     const next = reduce(state, {
       type: "message",
@@ -42,6 +42,7 @@ describe("the page's state", () => {
       at: NOW,
     });
     expect([next.vehicle, next.fleet, next.farm]).toEqual([null, null, null]);
+    expect(next.alerts).toEqual([]);
     const same = reduce(state, {
       type: "message",
       message: { type: "status", status: { ...status, gameOnline: false } },

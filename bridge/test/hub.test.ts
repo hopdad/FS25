@@ -85,13 +85,15 @@ describe("LiveHub", () => {
     expect(seen).toHaveLength(60);
   });
 
-  it("forgets the frames of a save it stopped following", () => {
+  it("forgets the frames and alerts of a save it stopped following", () => {
     const hub = new LiveHub();
     hub.publish("vehicle", LiveVehicle.parse(frame(null)));
-    hub.clearFrames();
+    hub.raise([alert(5)]);
+    hub.reset();
     const page = client();
     hub.attach(page);
     expect(types(page.messages)).toEqual(["hello", "status", "alerts"]);
+    expect(page.messages[2]).toEqual({ type: "alerts", alerts: [] });
   });
 
   it("keeps serving the other pages when one send fails", () => {
