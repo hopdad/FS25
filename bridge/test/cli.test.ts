@@ -1,4 +1,5 @@
 import { writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { type Io, main } from "../src/cli";
@@ -54,7 +55,7 @@ describe("farmlink-bridge", () => {
       "live_vehicle.json": frame(tractor, 845),
     });
     const { out, err, io, stop } = capture();
-    const running = main(["--dir", root, "--json"], io, environment);
+    const running = main(["--print", "--dir", root, "--json"], io, environment);
 
     await vi.waitFor(() => expect(out).toHaveLength(1), { timeout: 3000 });
     writeFileSync(join(dir, "live_vehicle.json"), JSON.stringify(frame(null, 846)));
@@ -64,5 +65,90 @@ describe("farmlink-bridge", () => {
     expect(await running).toBe(0);
     expect(JSON.parse(out[1] ?? "").minute).toBe(846);
     expect(err.join("\n")).toMatch(/following save 6f1c2d3e/);
+  });
+
+  it("rejects a port that is not a number", async () => {
+    const { err, io } = capture();
+    expect(await main(["--port", "eighty"], io, environment)).toBe(2);
+    expect(err).toEqual(["--port takes a port number"]);
+  });
+});
+
+describe("farmlink-bridge serving the phone page", () => {
+  async function serveOnce(args: string[], root: string, stateDir: string) {
+    const { out, err, io, stop } = capture();
+    let listening: { port: number; token: string; urls: string[] } | undefined;
+    const running = main(
+      [
+        "--dir",
+        root,
+        "--state",
+        stateDir,
+        "--port",
+        "0",
+        "--host",
+        "127.0.0.1",
+        "--no-qr",
+        ...args,
+      ],
+      io,
+      environment,
+      { page: "<p>page</p>", onListening: (info) => (listening = info) },
+    );
+    await vi.waitFor(() => expect(listening).toBeDefined());
+    return { out, err, running, stop, info: listening as NonNullable<typeof listening> };
+  }
+
+  it("serves the page, prints the pairing link and follows the active save", async () => {
+    const root = tempRoot();
+    writeSave(root, undefined, { "meta.json": meta(), "live_vehicle.json": frame(tractor) });
+    const { out, err, running, stop, info } = await serveOnce([], root, tempRoot());
+
+    expect(info.urls).toEqual([`http://127.0.0.1:${info.port}/?t=${info.token}`]);
+    expect(out).toContain(`  ${info.urls[0]}`);
+    const base = `http://127.0.0.1:${info.port}`;
+    expect(await (await fetch(`${base}/`)).text()).toBe("<p>page</p>");
+    await vi.waitFor(async () => {
+      const response = await fetch(`${base}/api/status?t=${info.token}`);
+      const body = (await response.json()) as { status: unknown };
+      expect(body.status).toMatchObject({
+        saveId: "6f1c2d3e-4a5b-4c6d-8e7f-0123456789ab",
+        saveName: "Riverbend Springs",
+        gameOnline: true,
+      });
+    });
+
+    stop();
+    expect(await running).toBe(0);
+    expect(err.join("\n")).toMatch(/following save 6f1c2d3e/);
+  });
+
+  it("keeps the pairing token between runs until --reset-token", async () => {
+    const root = tempRoot();
+    const stateDir = tempRoot();
+    const tokens: string[] = [];
+    for (const args of [[], [], ["--reset-token"]]) {
+      const { running, stop, info } = await serveOnce(args, root, stateDir);
+      tokens.push(info.token);
+      stop();
+      expect(await running).toBe(0);
+    }
+    expect(tokens[1]).toBe(tokens[0]);
+    expect(tokens[2]).not.toBe(tokens[0]);
+  });
+
+  it("says so when the port is taken", async () => {
+    const blocker = createServer();
+    await new Promise<void>((resolve) => blocker.listen(0, "127.0.0.1", () => resolve()));
+    const port = (blocker.address() as { port: number }).port;
+    const { err, io } = capture();
+    const code = await main(
+      ["--dir", tempRoot(), "--state", tempRoot(), "--port", String(port), "--host", "127.0.0.1"],
+      io,
+      environment,
+    );
+    blocker.close();
+    expect(code).toBe(1);
+    expect(err.join("\n")).toMatch(new RegExp(`port ${port} is in use`));
   });
 });

@@ -1,9 +1,10 @@
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { FILES, LiveVehicle } from "@farmlink/schema";
+import { FILES, LIVE_PORT, LiveVehicle } from "@farmlink/schema";
 import { currentEnvironment, type Environment, resolveRoot } from "./config";
 import { formatDoctor, runDoctor } from "./doctor";
 import { formatVehicleFrame } from "./format";
+import { type ServeOptions, serve } from "./serve";
 import { BRIDGE_VERSION } from "./version";
 import { LiveWatcher } from "./watch/live";
 import { pickSave } from "./watch/saves";
@@ -11,20 +12,28 @@ import { pickSave } from "./watch/saves";
 const HELP = `FarmLink bridge ${BRIDGE_VERSION}
 
 Usage:
-  farmlink-bridge [--dir <folder>] [--save <saveId>] [--json]
+  farmlink-bridge [--dir <folder>] [--save <saveId>] [--port <n>] [--host <address>]
+  farmlink-bridge --print [--dir <folder>] [--save <saveId>] [--json]
   farmlink-bridge --doctor [--dir <folder>] [--json]
 
-Prints every live_vehicle.json frame the FS25_FarmLink mod writes (P0).
+Serves the live page to your phone on the local network and relays worker commands to the
+FS25_FarmLink mod. Prints the page's address and a QR code to scan.
 
 Options:
-  --dir <folder>   modSettings/FS25_FarmLink, the modSettings folder, or the game profile folder.
-                   Defaults to FARMLINK_DIR, then the usual Documents location.
-  --save <saveId>  Follow one save instead of the most recently active one.
-  --json           Print raw JSON: one frame per line, or the doctor report.
-  --doctor         Report paths, file freshness, the P0 exit criteria and the probe's answers.
-  --observe <sec>  How long --doctor watches live_vehicle.json (default 5, 0 to skip).
-  -v, --version    Print the version.
-  -h, --help       Print this help.
+  --dir <folder>    modSettings/FS25_FarmLink, the modSettings folder, or the game profile folder.
+                    Defaults to FARMLINK_DIR, then the usual Documents location.
+  --save <saveId>   Follow one save instead of the most recently active one.
+  --port <n>        Port for the page and the WebSocket (default ${LIVE_PORT}).
+  --host <address>  Listen on one address only (default: every interface).
+  --state <folder>  Where bridge-state.json lives (default: your user config folder).
+  --reset-token     Make a new pairing token; links opened with the old one stop working.
+  --no-qr           Do not print the QR code.
+  --print           Print each live_vehicle.json frame instead of serving (the P0 mode).
+  --json            With --print, raw JSON lines; with --doctor, the report as JSON.
+  --doctor          Report paths, file freshness, the P0 exit criteria and the probe's answers.
+  --observe <sec>   How long --doctor watches live_vehicle.json (default 5, 0 to skip).
+  -v, --version     Print the version.
+  -h, --help        Print this help.
 `;
 
 export interface Io {
@@ -88,11 +97,21 @@ export async function follow(
   if (current) io.err(`stopped; ${JSON.stringify(current.watcher.stats)}`);
 }
 
+const PLACEHOLDER_PAGE =
+  '<!doctype html><meta charset="utf-8"><title>FarmLink</title><p>The live page is not built yet.';
+
+export interface MainOptions {
+  /** The phone page's HTML. */
+  page?: string;
+  onListening?: ServeOptions["onListening"];
+}
+
 /** Runs the command line and returns the exit code. */
 export async function main(
   argv: string[],
   io: Io = processIo,
   environment: Environment = currentEnvironment(),
+  options: MainOptions = {},
 ): Promise<number> {
   let values: ReturnType<typeof parse>["values"];
   try {
@@ -123,8 +142,31 @@ export async function main(
     return report.checks.some((c) => c.status === "fail") ? 1 : 0;
   }
 
-  await follow(environment, { dir: values.dir, saveId: values.save, json: values.json }, io);
-  return 0;
+  if (values.print) {
+    await follow(environment, { dir: values.dir, saveId: values.save, json: values.json }, io);
+    return 0;
+  }
+
+  const port = values.port === undefined ? undefined : Number(values.port);
+  if (port !== undefined && !(Number.isInteger(port) && port >= 0 && port <= 65535)) {
+    io.err("--port takes a port number");
+    return 2;
+  }
+  return serve(
+    environment,
+    {
+      dir: values.dir,
+      saveId: values.save,
+      port,
+      host: values.host,
+      stateDir: values.state,
+      resetToken: values["reset-token"],
+      qr: !values["no-qr"],
+      page: options.page ?? PLACEHOLDER_PAGE,
+      onListening: options.onListening,
+    },
+    io,
+  );
 }
 
 function parse(argv: string[]) {
@@ -138,6 +180,12 @@ function parse(argv: string[]) {
       json: { type: "boolean" },
       doctor: { type: "boolean" },
       observe: { type: "string" },
+      print: { type: "boolean" },
+      port: { type: "string" },
+      host: { type: "string" },
+      state: { type: "string" },
+      "reset-token": { type: "boolean" },
+      "no-qr": { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },

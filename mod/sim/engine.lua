@@ -242,7 +242,7 @@ local function newFarmManager()
         return self.byId[farmId]
     end
     manager:add(Farm.new(0, 0, "Spectator"))
-    manager:add(Farm.new(1, 100000, "Hopson Farms"))
+    manager:add(Farm.new(1, 100000, "Riverbend Farms"))
     return manager
 end
 

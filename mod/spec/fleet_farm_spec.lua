@@ -104,7 +104,7 @@ describe("fleet and farm channels", function()
             assert.are.equal(1, #farms)
             assert.are.same({
                 farmId = 1,
-                name = "Hopson Farms",
+                name = "Riverbend Farms",
                 balance = 100000,
                 loan = 50000,
                 storage = { { fillType = "WHEAT", liters = 180000.4 } },

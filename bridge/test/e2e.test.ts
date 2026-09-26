@@ -6,11 +6,22 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LiveVehicle, Meta, ProbeReport } from "@farmlink/schema";
+import {
+  AckRing,
+  LiveFarm,
+  LiveFleet,
+  LiveVehicle,
+  Meta,
+  ProbeReport,
+  parseCommandsXml,
+} from "@farmlink/schema";
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { CommandWriter } from "../src/commands/writer";
 import { runDoctor } from "../src/doctor";
+import { AlertEngine } from "../src/live/alerts";
+import { BridgeState } from "../src/state";
 import { tempRoot } from "./fixtures";
 
 const repo = fileURLToPath(new URL("../../", import.meta.url));
@@ -27,6 +38,23 @@ function findLua51(): string | undefined {
 
 const lua = findLua51();
 
+interface SimSummary {
+  saveId: string;
+  baseDir: string;
+  saveDir: string;
+  savegameDirectory: string;
+  activeJobs: number;
+  commandWatermark: number;
+}
+
+/** Runs mod/sim/run.lua and returns the JSON summary it prints last. */
+function simulate(profile: string, args: string[]): SimSummary {
+  const stdout = execFileSync(lua as string, [join(repo, "mod/sim/run.lua"), profile, ...args], {
+    encoding: "utf8",
+  });
+  return JSON.parse(stdout.trim().split("\n").at(-1) ?? "{}");
+}
+
 describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
   let profile: string;
   let saveDir: string;
@@ -34,10 +62,7 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
 
   beforeAll(() => {
     profile = tempRoot();
-    const stdout = execFileSync(lua as string, [join(repo, "mod/sim/run.lua"), profile, "3"], {
-      encoding: "utf8",
-    });
-    const summary = JSON.parse(stdout.trim().split("\n").at(-1) ?? "{}");
+    const summary = simulate(profile, ["3"]);
     saveDir = summary.saveDir;
     baseDir = summary.baseDir;
   });
@@ -54,6 +79,19 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       capacity: 3600,
     });
     expect(ProbeReport.parse(read(join(baseDir, "_probe", "probe.json"))).v).toBe(1);
+    const fleet = LiveFleet.parse(read(join(saveDir, "live_fleet.json")));
+    expect(fleet.fleet.jobs.map((j) => j.helper)).toEqual(["Alex"]);
+    expect(fleet.fleet.stops).toMatchObject([{ helper: "Sam", reason: "ERROR_OUT_OF_FUEL" }]);
+    expect(LiveFarm.parse(read(join(saveDir, "live_farm.json"))).farm.farms).toHaveLength(1);
+  });
+
+  it("give the bridge the alerts P1 promises", () => {
+    const fleet = LiveFleet.parse(read(join(saveDir, "live_fleet.json")));
+    const alerts = new AlertEngine().onFleet(fleet, Date.now());
+    expect(alerts.map((a) => [a.kind, a.message])).toEqual([
+      ["worker_stop", "Sam on Fendt 942 Vario: out of fuel"],
+      ["fuel_low", "Claas Lexion 8900: 3 % fuel left, driven by Alex"],
+    ]);
   });
 
   it("match the exported JSON Schema", () => {
@@ -69,6 +107,8 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
     check("meta.schema.json", join(saveDir, "meta.json"));
     check("live-vehicle.schema.json", join(saveDir, "live_vehicle.json"));
     check("probe.schema.json", join(baseDir, "_probe", "probe.json"));
+    check("live-fleet.schema.json", join(saveDir, "live_fleet.json"));
+    check("live-farm.schema.json", join(saveDir, "live_farm.json"));
   });
 
   it("keep the ledger identity in the savegame", () => {
@@ -97,5 +137,39 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       item7: "pass",
       item9: "pass",
     });
+  });
+});
+
+describe.skipIf(!lua)("a worker stop sent by the bridge and run by the mod's Lua", () => {
+  it("stops the worker, answers ok, and does not alert on the player's own stop", async () => {
+    const profile = tempRoot();
+    const first = simulate(profile, ["3"]);
+    const state = new BridgeState(tempRoot());
+    const writer = new CommandWriter({ saveDir: first.saveDir, numbering: state });
+
+    // The resumed session hires a worker that gets job id 1.
+    const answer = writer.send({ type: "worker.stop", farmId: 1, args: { jobId: "1" } });
+    const commandsPath = join(first.saveDir, "commands.xml");
+    await vi.waitFor(() => expect(existsSync(commandsPath)).toBe(true));
+    expect(parseCommandsXml(readFileSync(commandsPath, "utf8")).epoch).toBe(state.commandEpoch);
+
+    const second = simulate(profile, ["2", "--resume", first.savegameDirectory]);
+    expect(second.saveId).toBe(first.saveId);
+    expect(second.activeJobs).toBe(0);
+    expect(second.commandWatermark).toBe(1);
+
+    const ring = AckRing.parse(JSON.parse(readFileSync(join(second.saveDir, "acks.json"), "utf8")));
+    expect(ring).toMatchObject({ epoch: state.commandEpoch, watermark: 1 });
+    writer.onAcks(ring);
+    expect(await answer).toEqual({ id: 1, status: "ok", message: null });
+
+    const fleet = LiveFleet.parse(
+      JSON.parse(readFileSync(join(second.saveDir, "live_fleet.json"), "utf8")),
+    );
+    expect(fleet.fleet.stops).toMatchObject([
+      { jobId: "1", helper: "Alex", reason: "SUCCESS_STOPPED_BY_USER" },
+    ]);
+    const alerts = new AlertEngine().onFleet(fleet, Date.now());
+    expect(alerts.filter((a) => a.kind === "worker_stop")).toEqual([]);
   });
 });

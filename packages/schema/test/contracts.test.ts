@@ -235,7 +235,7 @@ describe("live channels", () => {
         farms: [
           {
             farmId: 1,
-            name: "Hopson Farms",
+            name: "Riverbend Farms",
             balance: 1250000,
             loan: 0,
             storage: [{ fillType: "WHEAT", liters: 180000 }],

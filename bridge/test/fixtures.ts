@@ -72,3 +72,90 @@ export function writeSave(root: string, saveId = SAVE_ID, files: Record<string, 
   }
   return dir;
 }
+
+export const TS = "2026-09-26T11:04:05-04:00";
+
+export const combineRow = {
+  vehicleId: "vehicle55aa",
+  name: "Claas Lexion 8900",
+  farmId: 1,
+  position: { x: 60, z: 12 },
+  fuelPct: 50,
+  damagePct: 0,
+  controller: "ai",
+  attachedTo: null,
+};
+
+export const tractorRow = {
+  vehicleId: "vehicle7f3a",
+  name: "Fendt 942 Vario",
+  farmId: 1,
+  position: { x: 120.5, z: -40.2, heading: 90 },
+  fuelPct: 62.5,
+  damagePct: 3.1,
+  controller: "player",
+  attachedTo: null,
+};
+
+export function aiJob(overrides: Record<string, unknown> = {}) {
+  return {
+    jobId: "1",
+    vehicleId: "vehicle55aa",
+    farmId: 1,
+    jobType: "FIELDWORK",
+    helper: "Alex",
+    fieldId: 12,
+    progressPct: null,
+    tankFillPct: 40,
+    startedAt: TS,
+    ...overrides,
+  };
+}
+
+export function stopEntry(stopId: number, reason: string, realTs = TS) {
+  return {
+    stopId,
+    jobId: "9",
+    vehicleId: "vehicle55aa",
+    farmId: 1,
+    jobType: "FIELDWORK",
+    helper: "Alex",
+    reason,
+    durationMin: 42,
+    realTs,
+    day: 37,
+    minute: 845,
+  };
+}
+
+export function fleetFrame(
+  fleet: { vehicles?: unknown[]; jobs?: unknown[]; stops?: unknown[] } = {},
+  sessionId = SESSION_ID,
+) {
+  return {
+    v: 1,
+    saveId: SAVE_ID,
+    sessionId,
+    realTs: TS,
+    day: 37,
+    minute: 845,
+    fleet: { vehicles: [combineRow, tractorRow], jobs: [], stops: [], ...fleet },
+  };
+}
+
+export function farmFrame() {
+  return {
+    v: 1,
+    saveId: SAVE_ID,
+    sessionId: SESSION_ID,
+    realTs: TS,
+    day: 37,
+    minute: 845,
+    farm: {
+      farms: [
+        { farmId: 1, name: "Riverbend", balance: 1250000, loan: 0, storage: [], productions: [] },
+      ],
+      weather: { current: { type: "SUN", temperatureC: 21 }, forecast: [] },
+    },
+  };
+}

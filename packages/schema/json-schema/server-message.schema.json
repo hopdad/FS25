@@ -1076,6 +1076,18 @@
                 }
               ]
             },
+            "farmId": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "at": {
               "type": "string",
               "format": "date-time",
@@ -1090,6 +1102,7 @@
             "message",
             "vehicleId",
             "jobId",
+            "farmId",
             "at"
           ],
           "additionalProperties": false
@@ -1164,6 +1177,18 @@
                   }
                 ]
               },
+              "farmId": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "at": {
                 "type": "string",
                 "format": "date-time",
@@ -1178,6 +1203,7 @@
               "message",
               "vehicleId",
               "jobId",
+              "farmId",
               "at"
             ],
             "additionalProperties": false

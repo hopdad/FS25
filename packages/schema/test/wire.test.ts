@@ -107,6 +107,7 @@ describe("LAN protocol", () => {
         message: "Alex on Claas Lexion 8900: out of fuel",
         vehicleId: "v14",
         jobId: "9",
+        farmId: 1,
         at: "2026-09-26T15:04:06.120Z",
       },
     };

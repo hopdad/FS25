@@ -21,7 +21,8 @@ export interface LiveWatcherOptions<T> {
   /** No new frame for this long marks the game offline. The spec asks for 15 s. */
   offlineAfterMs?: number;
   read?: ReadOptions;
-  onFrame: (frame: T, text: string) => void;
+  /** `mtimeMs` is the file's modification time, which tells a running game from a stale file. */
+  onFrame: (frame: T, text: string, file: { mtimeMs: number }) => void;
   onInvalid?: (error: string) => void;
   onOffline?: () => void;
   onOnline?: () => void;
@@ -78,9 +79,11 @@ export class LiveWatcher<T> {
 
   private async check(): Promise<void> {
     let signature: string;
+    let mtimeMs: number;
     try {
       const info = await stat(this.options.file);
       signature = `${info.mtimeMs}:${info.size}`;
+      mtimeMs = info.mtimeMs;
     } catch {
       return;
     }
@@ -98,7 +101,7 @@ export class LiveWatcher<T> {
         this.offline = false;
         this.options.onOnline?.();
       }
-      this.options.onFrame(result.value, result.text);
+      this.options.onFrame(result.value, result.text, { mtimeMs });
       return;
     }
     if (result.reason === "invalid") {

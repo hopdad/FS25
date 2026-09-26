@@ -32,6 +32,8 @@ export const Alert = z.object({
   message: z.string(),
   vehicleId: VehicleId.nullable(),
   jobId: JobId.nullable(),
+  /** The farm it concerns, so a page can show only its own farm's alerts; null for game-wide ones. */
+  farmId: FarmId.nullable(),
   /** When the bridge raised it, UTC. */
   at: z.iso.datetime(),
 });
@@ -70,6 +72,7 @@ export const CommandResponse = z.object({
 export type BridgeStatus = z.infer<typeof BridgeStatus>;
 export type Alert = z.infer<typeof Alert>;
 export type AlertKind = z.infer<typeof AlertKind>;
+export type AlertSeverity = z.infer<typeof AlertSeverity>;
 export type ServerMessage = z.infer<typeof ServerMessage>;
 export type CommandRequest = z.input<typeof CommandRequest>;
 export type CommandResponse = z.infer<typeof CommandResponse>;
