@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="96">
+    <author>Derrick Hopson</author>
+    <version>0.1.0.0</version>
+    <title>
+        <en>FarmLink</en>
+        <de>FarmLink</de>
+    </title>
+    <description>
+        <en><![CDATA[FarmLink records your farm's money, harvests, field work and hired workers as a durable ledger, for multiplayer and single-player saves.
+
+This is a development build (P0): it writes live vehicle data and a diagnostics report to modSettings/FS25_FarmLink/ and changes nothing in the game.
+
+Source and issues: https://github.com/hopdad/FS25]]></en>
+        <de><![CDATA[FarmLink erfasst Geld, Ernten, Feldarbeit und Helfer deines Hofs als dauerhaftes Hauptbuch, für Mehrspieler- und Einzelspieler-Spielstände.
+
+Dies ist eine Entwicklungsversion (P0): Sie schreibt Live-Fahrzeugdaten und einen Diagnosebericht nach modSettings/FS25_FarmLink/ und verändert nichts im Spiel.
+
+Quellcode und Fehlermeldungen: https://github.com/hopdad/FS25]]></de>
+    </description>
+    <iconFilename>icon_farmLink.png</iconFilename>
+    <multiplayer supported="true"/>
+    <l10n filenamePrefix="l10n/l10n"/>
+    <extraSourceFiles>
+        <sourceFile filename="scripts/FarmLink.lua"/>
+    </extraSourceFiles>
+</modDesc>
