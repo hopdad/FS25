@@ -191,7 +191,7 @@ All additive or naming-level.
   `%USERPROFILE%\Documents`. On Linux and Steam Deck the game runs under Proton, inside
   `steamapps/compatdata/2300320/pfx`.
 - **Windows file locking.** Replacing `commands.xml` fails with EPERM or EBUSY while the game has it
-  open; the bridge retries with backoff. Node opens files with read, write and delete sharing, so
+  open, so the P1 command writer has to retry with backoff. Node opens files with read, write and delete sharing, so
   the bridge never blocks the game's writes.
 - **Two implementations of the same math.** The P3 exit requires the Lua aggregates to match the SQL
   views. Define each formula once, with shared golden fixtures (events in, expected aggregates out)
@@ -205,7 +205,7 @@ All additive or naming-level.
 ## Decisions needed
 
 1. **F4:** move the money hook to `Farm.changeBalance` if the P0 probe sees bypasses. Recommended:
-   yes, pre-approved.
+   yes, and approving it now keeps P2 unblocked.
 2. **F5:** Web Push through the web app's origin, plus ntfy for LAN-only players?
 3. **F8:** allow read-only live collectors on multiplayer clients?
 4. **I1:** three or four web views in v1?
