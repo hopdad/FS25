@@ -229,19 +229,64 @@ export function ledgerChecks(probe: unknown, handleText: string | undefined): Ch
 
   const bookings = (l("shop.bookings") ?? []) as Json[];
   const added = (l("shop.vehicleAdded") ?? []) as Json[];
-  const booking = bookings.at(-1);
-  const next = booking ? added.find((entry) => num(entry.frame) >= num(booking.frame)) : undefined;
+  const removed = (l("shop.vehicleRemoved") ?? []) as Json[];
+  const isSale = (booking: Json) => String(booking.moneyType).includes("SELL");
+  /** The booking, and the machine message nearest to it: added for a purchase, removed for a sale. */
+  const describeBooking = (booking: Json): string => {
+    const message = isSale(booking) ? "VEHICLE_REMOVED" : "VEHICLE_ADDED";
+    const frame = num(booking.frame);
+    let nearest: Json | undefined;
+    for (const entry of isSale(booking) ? removed : added) {
+      if (
+        nearest === undefined ||
+        Math.abs(num(entry.frame) - frame) < Math.abs(num(nearest.frame) - frame)
+      ) {
+        nearest = entry;
+      }
+    }
+    const offset = nearest === undefined ? undefined : num(nearest.frame) - frame;
+    const where =
+      offset === undefined
+        ? `no ${message}`
+        : offset === 0
+          ? `${message} in the same frame`
+          : `${message} ${Math.abs(offset)} frames ${offset < 0 ? "before" : "after"}`;
+    return `${String(booking.moneyType)} with ${String(booking.vehicles)} machines, ${where}`;
+  };
+  const bought = bookings.filter((booking) => !isSale(booking)).at(-1);
+  const sold = bookings.filter(isSale).at(-1);
   checks.push(
     check(
       "shopOrder",
-      "A bought machine and its booking",
-      booking !== undefined,
-      booking !== undefined
-        ? `${String(booking.moneyType)} at frame ${String(booking.frame)} with ${String(booking.vehicles)} machines; ` +
-            (next
-              ? `VEHICLE_ADDED at frame ${String(next.frame)} with ${String(next.vehicles)}`
-              : "no VEHICLE_ADDED after it")
-        : "nothing bought yet: buy or lease any cheap machine",
+      "A bought or sold machine and its booking",
+      bought !== undefined && sold !== undefined,
+      [
+        bought ? describeBooking(bought) : "nothing bought yet: buy or lease any cheap machine",
+        sold ? describeBooking(sold) : "nothing sold yet: sell that machine again",
+      ].join("; "),
+    ),
+  );
+
+  const fleet = (l("fleet") ?? []) as Json[];
+  const loaded = fleet.some(
+    (sample) =>
+      sample.at === "update" &&
+      sample.started !== false &&
+      (typeof sample.toLoad !== "number" || sample.toLoad <= 0),
+  );
+  checks.push(
+    check(
+      "fleetLoaded",
+      "When the savegame's machines have loaded",
+      loaded,
+      fleet.length > 0
+        ? fleet
+            .map(
+              (sample) =>
+                `${sample.at === "init" ? "init" : `frame ${String(sample.frame)}`}: started ${String(sample.started)}, ${String(sample.toLoad)} loading, ${String(sample.vehicles)} vehicles`,
+            )
+            .join("; ")
+        : "no samples yet: load a savegame with this build of the mod",
     ),
   );
 

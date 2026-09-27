@@ -193,14 +193,44 @@ describe("the ledger probe", function()
         }, last)
     end)
 
-    it("records shop bookings next to the VEHICLE_ADDED that follows", function()
+    it("records shop bookings next to VEHICLE_ADDED, whichever comes first", function()
         Engine.loadMission({})
         Engine.run(0.1, 16)
         Engine.buyVehicle(helper.tractor({ uniqueId = "vehicleNew", implements = {} }), 150000)
         Engine.run(10.1, 100)
         local shop = ledger().shop
-        assert.are.same({ { moneyType = "SHOP_VEHICLE_BUY", amount = -150000, frame = 6, vehicles = 0 } }, shop.bookings)
+        assert.are.same({ { moneyType = "SHOP_VEHICLE_BUY", amount = -150000, frame = 6, vehicles = 1 } }, shop.bookings)
         assert.are.same({ { frame = 6, vehicles = 1 } }, shop.vehicleAdded)
+    end)
+
+    it("records a sale next to the VEHICLE_REMOVED", function()
+        Engine.loadMission({})
+        local tractor = Engine.addVehicle(helper.tractor({ implements = {} }))
+        Engine.run(0.1, 16)
+        Engine.sellVehicle(tractor, 150000)
+        Engine.run(10.1, 100)
+        local shop = ledger().shop
+        assert.are.same({ { moneyType = "SHOP_VEHICLE_SELL", amount = 150000, frame = 6, vehicles = 0 } }, shop.bookings)
+        assert.are.same({ { frame = 6, vehicles = 0 } }, shop.vehicleRemoved)
+    end)
+
+    it("samples the fleet while the savegame's machines load", function()
+        Engine.loadMission({ isMissionStarted = false })
+        local system = g_currentMission.vehicleSystem
+        system.vehiclesToLoad = 2
+        Engine.run(0.1, 16)
+        Engine.addVehicle(helper.tractor({ implements = {} }))
+        Engine.addVehicle(helper.tractor({ uniqueId = "tractor2", implements = {} }))
+        system.vehiclesToLoad = 0
+        Engine.run(0.1, 16)
+        g_currentMission.isMissionStarted = true
+        Engine.run(10.1, 100)
+        assert.are.same({
+            { at = "init", frame = 0, started = false, toLoad = helper.NULL, vehicles = 0 },
+            { at = "update", frame = 1, started = false, toLoad = 2, vehicles = 0 },
+            { at = "update", frame = 7, started = false, toLoad = 0, vehicles = 2 },
+            { at = "update", frame = 13, started = true, toLoad = 0, vehicles = 2 },
+        }, ledger().fleet)
     end)
 
     it("stops listening and restores updateFarmStats when the mission ends", function()

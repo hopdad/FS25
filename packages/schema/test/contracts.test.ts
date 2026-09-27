@@ -102,7 +102,13 @@ describe("event envelope", () => {
         price: 412000,
         leased: false,
       }),
-      envelope("vehicle_removed", { vehicleId: "v20", reason: "sold", operatingHours: 88.5 }),
+      envelope("vehicle_removed", {
+        vehicleId: "v20",
+        reason: "sold",
+        operatingHours: 88.5,
+        salePrice: 301000,
+      }),
+      envelope("vehicle_removed", { vehicleId: "v21", reason: "returned", operatingHours: 6 }),
       envelope("vehicle_hours", { vehicleId: "v20", operatingHours: 90.25 }),
       envelope("worker_start", { jobId: "9", vehicleId: "v14", jobType: "FIELDWORK", fieldId: 12 }),
       envelope("worker_stop", {
@@ -389,6 +395,7 @@ describe("ledger golden fixtures", () => {
     const fixtures = ledgerFixtures();
     expect(fixtures.map((f) => f.name)).toEqual([
       "field_season",
+      "fleet",
       "reconciliation",
       "worker_downtime",
     ]);

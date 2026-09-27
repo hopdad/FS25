@@ -34,10 +34,10 @@ older save is loaded; the bridge checks every line and reports gaps. The log rec
 - money, with what it was for (sale, fuel, wages, bought seed, repairs);
 - hired workers' starts and stops;
 - harvest and field work, by field;
+- machines bought, leased or sold, with the shop money paired with them, and their hours;
 - each day's rollover and prices.
 
-Machines (bought, sold, hours) and the sync to Supabase come next.
-[docs/LEDGER.md](docs/LEDGER.md) describes the ledger.
+The sync to Supabase comes next. [docs/LEDGER.md](docs/LEDGER.md) describes the ledger.
 
 | Document | What it is |
 | --- | --- |

@@ -4,11 +4,12 @@
 --   lua5.1 sim/ledger.lua <profileDir> [--block-append]
 --
 -- A day of play goes through the real producers:
+-- - the machines' first hours, when the session takes stock of the fleet;
 -- - a hired worker sowing a field, with its wages and the seed it buys;
 -- - a combine threshing wheat on that field;
--- - a sale, a refuel, a repair and a machine bought in the shop;
--- - two new days, each with a day rollover and the day's prices.
--- The machine events, which have no producer yet, are written directly.
+-- - a grain sale, a refuel and a repair;
+-- - a machine bought in the shop, and the combine sold;
+-- - two new days, each with the hours of the machines that worked, a day rollover and the prices.
 -- The career is then saved, a little more money moves, and the session ends without saving.
 -- Loading that savegame again forks a new branch.
 --
@@ -34,7 +35,6 @@ local combineType = Engine.finalizeCombineType()
 Engine.loadMission({ savegameIndex = 1 })
 
 local EventLog = FarmLink.EventLog
-local PLAYER = "4f1e2d3c"
 
 local seeder = Engine.newVehicle({ uniqueId = "vehicle91c0", name = "Amazone Cirrus 6003", x = 120.5, z = -40.2 })
 local tractor = Engine.addVehicle(Engine.newVehicle({
@@ -72,19 +72,15 @@ combine.operatingTime = combine.operatingTime + 0.4 * 3600000
 Engine.sell(1, "WHEAT", 12000)
 Engine.refuel(tractor, 0.5)
 Engine.repair(tractor, 1840)
-Engine.buyVehicle(Engine.newVehicle({ uniqueId = "vehicle3c1d", name = "Kubota M7" }), 110000)
-Engine.run(11.2, 100)
-
--- The machine events, which have no producer yet.
-EventLog.emit("vehicle_added", 1, {
-    vehicleId = "vehicle3c1d",
-    storeItem = "data/vehicles/kubota/m7/m7.xml",
+Engine.buyVehicle(Engine.newVehicle({
+    uniqueId = "vehicle3c1d",
     name = "Kubota M7",
-    price = 110000,
-    leased = false,
-}, PLAYER)
-EventLog.emit("vehicle_hours", 1, { vehicleId = "vehicle7f3a", operatingHours = 91, sellValue = 318000 })
-EventLog.emit("vehicle_removed", 1, { vehicleId = "vehicle55aa", reason = "sold", operatingHours = 88.5 }, PLAYER)
+    configFileName = "data/vehicles/kubota/m7/m7.xml",
+    operatingTimeMs = 0,
+}), 110000)
+Engine.run(11.2, 100)
+Engine.sellVehicle(combine, 238000)
+Engine.run(3.1, 100)
 
 Engine.newDay()
 g_currentMission:addMoney(-40, 1, MoneyType.OTHER)

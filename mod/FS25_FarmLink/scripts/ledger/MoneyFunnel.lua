@@ -32,6 +32,8 @@ local MoneyFunnel = {
     HOOK = "addMoney",
     QUIET_MS = 2000,
     MAX_AGE_MS = 300000,
+    -- A machine appearing or leaving pairs with a shop booking at most this long before it.
+    PAIR_MS = 10000,
     COALESCE = { fuel = true, wage = true, input = true },
 }
 FarmLink.MoneyFunnel = MoneyFunnel
@@ -253,6 +255,13 @@ function MoneyFunnel.book(amount, farmId, moneyType)
         s.wages[entry.jobId] = (s.wages[entry.jobId] or 0) - amount
     end
 
+    if name:find("SHOP_VEHICLE", 1, true) ~= nil or name:find("LEASING", 1, true) ~= nil then
+        s.shop[#s.shop + 1] = { moneyType = name, amount = amount, farmId = farmId, atMs = s.clockMs }
+        while #s.shop > 20 do
+            table.remove(s.shop, 1)
+        end
+    end
+
     local coalesce = MoneyFunnel.COALESCE[kind] == true
     local key = bucketKey(farmId, name, entry)
     local bucket = coalesce and s.buckets[key] or nil
@@ -302,6 +311,32 @@ function MoneyFunnel.flushJob(jobId)
         local entry = bucket.lastEntry
         return type(entry) == "table" and entry.kind == "wage" and entry.jobId == id
     end)
+end
+
+---The latest shop booking of the farm (any farm when nil) whose money type contains `pattern` and
+---whose sign matches, if it came within PAIR_MS. It is taken, so it pairs with one machine only: the
+---machines module pairs a machine that came or went with its purchase, lease or sale this way.
+function MoneyFunnel.takeShopBooking(pattern, positive, farmId)
+    local s = state
+    if s == nil then
+        return nil
+    end
+    for i = #s.shop, 1, -1 do
+        local booking = s.shop[i]
+        if s.clockMs - booking.atMs > MoneyFunnel.PAIR_MS then
+            break
+        end
+        if
+            not booking.taken
+            and (farmId == nil or booking.farmId == farmId)
+            and booking.moneyType:find(pattern, 1, true) ~= nil
+            and (booking.amount > 0) == positive
+        then
+            booking.taken = true
+            return booking
+        end
+    end
+    return nil
 end
 
 ---Wages paid for a job since it started, as a positive amount.
@@ -365,6 +400,7 @@ function MoneyFunnel.init(_ctx)
         buckets = {},
         order = {},
         wages = {},
+        shop = {},
         stats = { bookings = 0, events = 0 },
     }
     if MoneyFunnel.HOOK == "addMoney" then

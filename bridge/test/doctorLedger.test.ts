@@ -39,6 +39,7 @@ describe("--doctor's P2 checks", () => {
       workListeners: "pending",
       finances: "pending",
       shopOrder: "pending",
+      fleetLoaded: "pending",
       moneyTypes: "pending",
     });
     expect(checks.find((c) => c.id === "pause")?.detail).toBe(
@@ -100,9 +101,20 @@ describe("--doctor's P2 checks", () => {
           ],
         },
         shop: {
-          bookings: [{ moneyType: "SHOP_VEHICLE_BUY", frame: 900, vehicles: 7 }],
-          vehicleAdded: [{ frame: 912, vehicles: 8 }],
+          bookings: [
+            { moneyType: "SHOP_VEHICLE_BUY", amount: -150000, frame: 900, vehicles: 8 },
+            { moneyType: "SHOP_VEHICLE_SELL", amount: 120000, frame: 2400, vehicles: 7 },
+          ],
+          vehicleAdded: [
+            { frame: 3, vehicles: 7 },
+            { frame: 897, vehicles: 8 },
+          ],
+          vehicleRemoved: [{ frame: 2400, vehicles: 7 }],
         },
+        fleet: [
+          { at: "init", frame: 0, started: false, toLoad: null, vehicles: 0 },
+          { at: "update", frame: 1, started: true, toLoad: 0, vehicles: 7 },
+        ],
       }),
       undefined,
     );
@@ -118,9 +130,16 @@ describe("--doctor's P2 checks", () => {
     expect(byId.finances?.detail).toBe(
       "order DAY_CHANGED → PERIOD_CHANGED; at the last DAY_CHANGED the month so far was -130 with 0 months archived; PERIOD_CHANGED left 0 and 1 archived (last -130)",
     );
-    expect(byId.shopOrder?.detail).toBe(
-      "SHOP_VEHICLE_BUY at frame 900 with 7 machines; VEHICLE_ADDED at frame 912 with 8",
-    );
+    expect(byId.shopOrder).toMatchObject({
+      status: "pass",
+      detail:
+        "SHOP_VEHICLE_BUY with 8 machines, VEHICLE_ADDED 3 frames before; SHOP_VEHICLE_SELL with 7 machines, VEHICLE_REMOVED in the same frame",
+    });
+    expect(byId.fleetLoaded).toMatchObject({
+      status: "pass",
+      detail:
+        "init: started false, null loading, 0 vehicles; frame 1: started true, 0 loading, 7 vehicles",
+    });
   });
 
   it("fails the work listeners when a hook could not be installed", () => {

@@ -61,9 +61,9 @@ selection. Then:
 6. **Field work (optional).** Sow, spray, cultivate or plow for about 30 seconds.
 7. **Pause.** Press Esc, wait 20 seconds, and carry on.
 8. **A new day (optional).** Sleep, or fast-forward until the clock passes midnight.
-9. **Machines and a new month (optional).** Repair any machine. Buy or lease a cheap machine or
-   tool in the shop. If the game setting that lets helpers buy seed is on, hire one to sow for a
-   minute. If the month is about to end, sleep through its last day.
+9. **Machines and a new month (optional).** Repair any machine. Buy a cheap machine or tool in
+   the shop, and a minute later sell it again. If the game setting that lets helpers buy seed is
+   on, hire one to sow for a minute. If the month is about to end, sleep through its last day.
 10. **Save.** Press Esc and save the game.
 11. **Run the doctor.** Get back into a vehicle, stop the bridge with Ctrl+C and run:
 

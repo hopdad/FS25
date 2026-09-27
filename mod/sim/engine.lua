@@ -342,6 +342,15 @@ function Vehicle:getRootVehicle()
     return self.rootVehicle or self
 end
 
+function Vehicle:getPrice()
+    return self.price or 0
+end
+
+---What the shop would pay for the machine today.
+function Vehicle:getSellPrice()
+    return self.sellPrice or 0
+end
+
 function Vehicle:getShowInVehiclesOverview()
     return self.listed ~= false and (self.propertyState == PROPERTY_OWNED or self.propertyState == PROPERTY_LEASED)
 end
@@ -403,6 +412,9 @@ function Engine.newVehicle(opts)
         farmId = opts.farmId or 1,
         listed = opts.listed,
         propertyState = opts.propertyState or PROPERTY_OWNED,
+        configFileName = opts.configFileName or ("data/vehicles/" .. (opts.uniqueId or "machine") .. ".xml"),
+        price = opts.price,
+        sellPrice = opts.sellPrice,
         implements = opts.implements or {},
         rootNode = {
             x = opts.x or 0,
@@ -857,6 +869,13 @@ local function newMission(opts)
                 return self.jobTypes[index]
             end,
         },
+        economyManager = {
+            -- What leasing a machine costs up front, for a store price.
+            getInitialLeasingPrice = function(_self, price)
+                return price * 0.04
+            end,
+        },
+        isMissionStarted = opts.isMissionStarted ~= false,
         time = 0,
     }, Mission)
     return mission
@@ -987,6 +1006,7 @@ function Engine.install(opts)
         LEASING_COSTS = { id = 9, title = "finance_vehicleLeasingCost", statistic = "vehicleLeasingCost" },
     }
     FinanceStats = { statNames = FINANCE_STAT_NAMES }
+    VehiclePropertyState = { NONE = 1, OWNED = PROPERTY_OWNED, LEASED = PROPERTY_LEASED, MISSION = 4 }
     AIJob = newAIJobClass()
     SowingMachine = newSowingMachine()
     Sprayer = newSprayer()
@@ -1201,10 +1221,37 @@ function Engine.workArea(vehicle, spec, sqm, inputPrice, liters, fillType)
     spec["onEndWorkAreaProcessing"](vehicle, 16, true)
 end
 
----Buys a vehicle in the shop: the purchase is booked, then the vehicle is added.
+---Buys a vehicle in the shop, as BuyVehicleData does: the vehicle loads and is added, then its
+---onBought callback books the purchase.
 function Engine.buyVehicle(vehicle, price, farmId)
+    Engine.addVehicle(vehicle)
     g_currentMission:addMoney(-price, farmId or 1, MoneyType.SHOP_VEHICLE_BUY, true)
-    return Engine.addVehicle(vehicle)
+    return vehicle
+end
+
+---Leases a vehicle: the leased vehicle is added, then the fee paid up front is booked.
+function Engine.leaseVehicle(vehicle, fee, farmId)
+    vehicle.propertyState = PROPERTY_LEASED
+    Engine.addVehicle(vehicle)
+    g_currentMission:addMoney(-fee, farmId or 1, MoneyType.LEASING_COSTS, true)
+    return vehicle
+end
+
+---Takes a vehicle off the map, as VehicleSystem:removeVehicle does.
+function Engine.removeVehicle(vehicle)
+    local list = g_currentMission.vehicleSystem.vehicles
+    for i = #list, 1, -1 do
+        if list[i] == vehicle then
+            table.remove(list, i)
+        end
+    end
+    g_messageCenter:publish(MessageType.VEHICLE_REMOVED)
+end
+
+---Sells a vehicle in the shop: the vehicle is removed, then the sale is booked.
+function Engine.sellVehicle(vehicle, price, farmId)
+    Engine.removeVehicle(vehicle)
+    g_currentMission:addMoney(price, farmId or 1, MoneyType.SHOP_VEHICLE_SELL, true)
 end
 
 ---Sells liters of a fill type at the first selling point, as unloading a trailer does.

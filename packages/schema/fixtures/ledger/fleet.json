@@ -1,0 +1,49 @@
+{
+  "description": "Machines paired with their shop money by the mod, with no shop context: one bought, repaired and sold, a leased one given back, a pack of two that keep their store prices (one worn, one gone without a sale), and one the farm already had. Pins vehicles and vehicle_cost_per_hour.",
+  "defaults": {
+    "v": 1,
+    "saveId": "2c4e6a8b-0d1f-4a3c-9e5b-7d9f1b3d5f7a",
+    "branchId": "6e8a0c2e-4f5b-4d7c-8a9e-1f3b5d7f9b1d",
+    "farmId": 1,
+    "year": 1,
+    "userId": null,
+    "realTs": "2026-09-27T14:00:00Z"
+  },
+  "events": [
+    { "seq": 1, "day": 5, "minute": 300, "type": "session", "data": { "modVersion": "0.3.0.0", "gameVersion": "1.10.1.0", "integrations": [], "period": 3, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 2, "day": 5, "minute": 300, "type": "vehicle_hours", "data": { "vehicleId": "tractor0", "operatingHours": 300, "sellValue": 60000 } },
+    { "seq": 3, "day": 5, "minute": 400, "userId": "4f1e2d3c", "type": "money", "data": { "amount": -45000, "moneyType": "SHOP_VEHICLE_BUY", "context": { "kind": "none" } } },
+    { "seq": 4, "day": 5, "minute": 400, "userId": "4f1e2d3c", "type": "vehicle_added", "data": { "vehicleId": "baler1", "storeItem": "data/vehicles/kuhn/fbp3135/fbp3135.xml", "name": "KUHN FBP 3135", "price": 45000, "leased": false } },
+    { "seq": 5, "day": 5, "minute": 410, "userId": "4f1e2d3c", "type": "money", "data": { "amount": -1500, "moneyType": "LEASING_COSTS", "context": { "kind": "none" } } },
+    { "seq": 6, "day": 5, "minute": 410, "userId": "4f1e2d3c", "type": "vehicle_added", "data": { "vehicleId": "mower1", "storeItem": "data/vehicles/krone/easyCut9200/easyCut9200.xml", "name": "Krone EasyCut B 950", "price": 1500, "leased": true } },
+    { "seq": 7, "day": 5, "minute": 420, "userId": "4f1e2d3c", "type": "money", "data": { "amount": -52000, "moneyType": "SHOP_VEHICLE_BUY", "context": { "kind": "none" } } },
+    { "seq": 8, "day": 5, "minute": 420, "userId": "4f1e2d3c", "type": "vehicle_added", "data": { "vehicleId": "rake1", "storeItem": "data/vehicles/krone/swadro2000/swadro2000.xml", "name": "Krone Swadro 2000", "price": 22000, "leased": false } },
+    { "seq": 9, "day": 5, "minute": 420, "userId": "4f1e2d3c", "type": "vehicle_added", "data": { "vehicleId": "tedder1", "storeItem": "data/vehicles/krone/vendro1120/vendro1120.xml", "name": "Krone Vendro 1120", "price": 30000, "leased": false } },
+    { "seq": 10, "day": 5, "minute": 700, "userId": "4f1e2d3c", "type": "money", "data": { "amount": -600, "moneyType": "VEHICLE_REPAIR", "context": { "kind": "vehicle", "vehicleId": "baler1" } } },
+    { "seq": 11, "day": 6, "minute": 0, "type": "vehicle_hours", "data": { "vehicleId": "baler1", "operatingHours": 8, "sellValue": 40000 } },
+    { "seq": 12, "day": 6, "minute": 0, "type": "vehicle_hours", "data": { "vehicleId": "mower1", "operatingHours": 6 } },
+    { "seq": 13, "day": 6, "minute": 0, "type": "vehicle_hours", "data": { "vehicleId": "tedder1", "operatingHours": 5, "sellValue": 28000 } },
+    { "seq": 14, "day": 6, "minute": 0, "type": "vehicle_hours", "data": { "vehicleId": "tractor0", "operatingHours": 310, "sellValue": 59500 } },
+    { "seq": 15, "day": 6, "minute": 0, "type": "day_rollover", "data": { "balance": 400900, "loan": 0, "financeByCategory": {}, "period": 4, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 16, "day": 7, "minute": 500, "userId": "4f1e2d3c", "type": "money", "data": { "amount": 38000, "moneyType": "SHOP_VEHICLE_SELL", "context": { "kind": "none" } } },
+    { "seq": 17, "day": 7, "minute": 500, "userId": "4f1e2d3c", "type": "vehicle_removed", "data": { "vehicleId": "baler1", "reason": "sold", "operatingHours": 12, "salePrice": 38000 } },
+    { "seq": 18, "day": 7, "minute": 520, "userId": "4f1e2d3c", "type": "vehicle_removed", "data": { "vehicleId": "mower1", "reason": "returned", "operatingHours": 6 } },
+    { "seq": 19, "day": 8, "minute": 100, "type": "vehicle_removed", "data": { "vehicleId": "rake1", "reason": "deleted", "operatingHours": 4 } }
+  ],
+  "expect": {
+    "vehicles": [
+      { "vehicle_id": "tractor0", "farm_id": 1, "price": null, "leased": false, "bought_day": null, "sold_day": null, "removed_day": null, "sale_price": null, "operating_hours": 310, "sell_value": 59500, "hours_at_start": 300 },
+      { "vehicle_id": "baler1", "farm_id": 1, "price": 45000, "leased": false, "bought_day": 5, "sold_day": 7, "removed_day": 7, "sale_price": 38000, "operating_hours": 12, "sell_value": 40000, "hours_at_start": 0 },
+      { "vehicle_id": "mower1", "farm_id": 1, "price": 1500, "leased": true, "bought_day": 5, "sold_day": null, "removed_day": 7, "sale_price": null, "operating_hours": 6, "hours_at_start": 0 },
+      { "vehicle_id": "rake1", "farm_id": 1, "price": 22000, "leased": false, "bought_day": 5, "sold_day": null, "removed_day": 8, "sale_price": null, "operating_hours": 4, "sell_value": null, "hours_at_start": 0 },
+      { "vehicle_id": "tedder1", "farm_id": 1, "price": 30000, "leased": false, "bought_day": 5, "sold_day": null, "removed_day": null, "sale_price": null, "operating_hours": 5, "sell_value": 28000, "hours_at_start": 0 }
+    ],
+    "vehicle_cost_per_hour": [
+      { "vehicle_id": "tractor0", "farm_id": 1, "capital_known": false, "capital_cost": null, "purchase_paid": null, "sale_income": null, "upkeep": 0, "hours": 10, "cost_per_hour": 0, "machine_cost_per_hour": 0 },
+      { "vehicle_id": "baler1", "farm_id": 1, "capital_known": true, "purchase_paid": 45000, "sale_income": 38000, "sold_day": 7, "capital_cost": 7000, "fuel": 0, "wages": 0, "upkeep": 600, "hours": 12, "cost_per_hour": 633.333333333333, "machine_cost_per_hour": 633.333333333333 },
+      { "vehicle_id": "mower1", "farm_id": 1, "leased": true, "capital_known": true, "purchase_paid": 1500, "sale_income": null, "capital_cost": 1500, "upkeep": 0, "hours": 6, "cost_per_hour": 250, "machine_cost_per_hour": 250 },
+      { "vehicle_id": "rake1", "farm_id": 1, "capital_known": true, "purchase_paid": 22000, "sale_income": null, "capital_cost": 22000, "hours": 4, "cost_per_hour": 5500, "machine_cost_per_hour": 5500 },
+      { "vehicle_id": "tedder1", "farm_id": 1, "capital_known": true, "purchase_paid": 30000, "sale_income": null, "sell_value": 28000, "capital_cost": 2000, "hours": 5, "cost_per_hour": 400, "machine_cost_per_hour": 400 }
+    ]
+  }
+}

@@ -82,8 +82,9 @@ hours                 = latest operating hours - hours when bought (or first see
 
 - **Capital** is what was paid less what the machine brought back.
   - Paid: the `shop` money booked to the machine, else its `vehicle_added` price.
-  - Brought back: the sale income once sold, nothing once gone without a sale, else today's
-    `sellValue` from `vehicle_hours`.
+  - Brought back: once sold, the `shop` money booked to the sale, else the `salePrice` on
+    `vehicle_removed`. Nothing once gone without a sale. Otherwise today's `sellValue` from
+    `vehicle_hours`.
 - **Leased machine.** Capital is the fee paid up front; the running leasing costs are upkeep.
 - **A machine the farm had before FarmLink.** There is no purchase to go on, so capital is unknown
   (`capital_known = false`) and only its running costs count.
@@ -172,6 +173,8 @@ Row-level security is on for every table, and every view runs as its caller
 | `worker_start`, `worker_stop` | `hooks/AIWorkers.lua` | A hired worker starts or stops; the stop carries the job's wages |
 | `harvest` | `ledger/Harvest.lua` | Liters a combine threshed on a field, gathered per machine, field and fill type |
 | `field_work` | `ledger/FieldWork.lua` | Hectares sown, sprayed, fertilized or tilled on a field, with the input used |
+| `vehicle_added`, `vehicle_removed` | `ledger/Machines.lua` | A machine bought, leased, sold, given back or gone, with the shop money paired with it |
+| `vehicle_hours` | `ledger/Machines.lua` | Every machine's first hours; then, before each rollover, the machines whose hours changed |
 | `day_rollover` | `ledger/DayRollover.lua` | A new day, once per player farm, after everything gathered is written |
 | `prices` | `ledger/Prices.lua` | Session start and every new day |
 
@@ -204,9 +207,27 @@ a `count` (F3). Everything else is written as it happens.
 - Field work is credited to the machine pulling the tool, which has the operating hours, fuel and
   wages. `workedHours` is that machine's operating time over the gathered stretch.
 
-**Not written yet:** `vehicle_added`, `vehicle_removed` and `vehicle_hours` (the fleet diff). Also
-missing are the `shop` context and the hourly gathering of periodic money such as upkeep. Each waits
-on an answer from the P0 session's probe.
+**Machines (the fleet diff).**
+- The game's `VEHICLE_ADDED` and `VEHICLE_REMOVED` do not say which machine, and loading a savegame
+  adds every machine too. So the mod compares the farm's machines with the ones it knows every 2 s.
+- The first comparison of a session, once the mission has started, only takes stock. A machine the
+  ledger has never seen gets its baseline `vehicle_hours`, not a purchase.
+- The machines the ledger knows are kept in the savegame's `farmLink.xml`, with the operating time
+  last written for each, so they roll back with the save.
+- **Pairing with the money.** A purchase is booked once the machine has loaded, and a sale as it
+  goes. A machine that appears or leaves alone on its farm takes that farm's matching shop booking
+  from the money funnel: `SHOP_VEHICLE_BUY`, `LEASING_COSTS` or `SHOP_VEHICLE_SELL`. It waits up to
+  10 s for one; with none, a purchase keeps the store price (for a lease, the game's up-front fee
+  for it), and a departure is `deleted` or, if leased, `returned`.
+- **Machines that appear together** (a pack) share one booking, so each keeps its store price.
+- **A machine reset to the shop** is deleted and loaded again under the same id. If it comes back
+  within those 10 s, it never left.
+- A save settles whatever is still waiting, so those events come before the savegame's seq.
+- Only what the game lists in its vehicle overview counts (owned or leased, not contract equipment
+  or pallets), and only for a player farm.
+
+**Not written yet:** the `shop` money context, and the hourly gathering of periodic money such as
+upkeep. Each waits on an answer from the P0 session's probe.
 
 ## What the mod and bridge must send
 
@@ -228,6 +249,8 @@ These are requirements for the P2 event log (mod) and sync (bridge), which follo
 - **`vehicle_added` and `vehicle_removed`.**
   - `vehicle_added` is only for machines bought or leased while FarmLink runs, with `operatingHours`
     for a used one. Machines found at the first session are baseline hours, not purchases.
+  - `price` is what was paid, and for a lease the fee paid up front. `vehicle_removed` carries the
+    `salePrice` of a sale, and says `returned` for a leased machine given back.
   - A machine reset to the shop is still the same machine, so the mod must not report it as
     removed and added.
 - **Flush before a save.** Flush every coalescing bucket before `day_rollover` (F3), and also
@@ -244,6 +267,11 @@ These are requirements for the P2 event log (mod) and sync (bridge), which follo
 
 - **Machine cost per hour is lifetime to date.** As a machine ages, its current value and hours
   change, and so do the machine costs of past seasons.
+- **An idle machine's value.** Its `sellValue` is written with its hours, so it is only refreshed
+  when the machine next works.
+- **Pairing a machine with its money** assumes the shop books within 10 s of the machine appearing
+  or leaving, under `SHOP_VEHICLE_BUY`, `LEASING_COSTS` and `SHOP_VEHICLE_SELL`. The P0 probe's
+  `shop` section checks that in the game. Machines bought as a pack keep their store prices.
 - **Trailed implements.** A trailed tool logs no operating hours of its own, so its capital reaches
   field P&L only if the mod credits it the tractor's hours.
 - **Winter crops.** A crop sown in autumn is costed in that year and earns in the next, because a

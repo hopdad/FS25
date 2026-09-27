@@ -19,8 +19,11 @@
 --   finances    each farm's finance statistics at DAY_CHANGED and PERIOD_CHANGED, and the order the
 --               two arrive in. FarmStats keeps a bucket per month and archives it on PERIOD_CHANGED,
 --               so the day rollover has to difference snapshots; this shows how
---   shop        shop and leasing bookings next to VEHICLE_ADDED, to learn whether a bought machine
---               exists yet when its price is booked
+--   shop        shop and leasing bookings next to VEHICLE_ADDED and VEHICLE_REMOVED, to learn
+--               whether a bought machine exists yet when its price is booked, and a sold one still does
+--   fleet       isMissionStarted, VehicleSystem.vehiclesToLoad and the vehicle count over the first
+--               FLEET_MS, to learn when the savegame's machines have all loaded (the machines module
+--               takes stock then)
 --
 -- Observation only: every hook forwards the game's own results unchanged, and every step runs under
 -- pcall. Disabled together with the P0 probe.
@@ -36,6 +39,8 @@ local LedgerProbe = {
     -- An update gap at least this long is recorded.
     GAP_MS = 2000,
     MAX_SAMPLES = 12,
+    -- How long after the mission loads the fleet is sampled.
+    FLEET_MS = 30000,
     MAX_PRICES = 24,
     MESSAGES = {
         "DAY_CHANGED",
@@ -140,6 +145,32 @@ local function vehicleCount()
         return null()
     end
     return #system.vehicles
+end
+
+-- When the fleet has loaded: a sample each time the mission's started flag, the vehicles still
+-- loading or the vehicle count change.
+local function sampleFleet(s, at)
+    local mission = g_currentMission
+    local system = mission ~= nil and mission.vehicleSystem or nil
+    local toLoad = type(system) == "table" and system.vehiclesToLoad or nil
+    local sample = {
+        at = at,
+        frame = s.updates.calls,
+        started = null(),
+        toLoad = type(toLoad) == "number" and toLoad or null(),
+        vehicles = vehicleCount(),
+    }
+    if mission ~= nil and type(mission.isMissionStarted) == "boolean" then
+        sample.started = mission.isMissionStarted
+    end
+    local last = s.fleet[#s.fleet]
+    local changed = last == nil
+        or last.started ~= sample.started
+        or last.toLoad ~= sample.toLoad
+        or last.vehicles ~= sample.vehicles
+    if changed then
+        push(s.fleet, sample, 12)
+    end
 end
 
 -- The sum of a finance bucket over FinanceStats.statNames (or every number in it).
@@ -403,6 +434,8 @@ function LedgerProbe.onMessage(name, ...)
             s.prices.latest = LedgerProbe.samplePrices()
         elseif name == "VEHICLE_ADDED" then
             push(s.shop.vehicleAdded, { frame = s.updates.calls, vehicles = vehicleCount() })
+        elseif name == "VEHICLE_REMOVED" then
+            push(s.shop.vehicleRemoved, { frame = s.updates.calls, vehicles = vehicleCount() })
         end
     end, ...)
 end
@@ -642,7 +675,9 @@ function LedgerProbe.report()
         shop = {
             bookings = Json.array(s.shop.bookings),
             vehicleAdded = Json.array(s.shop.vehicleAdded),
+            vehicleRemoved = Json.array(s.shop.vehicleRemoved),
         },
+        fleet = Json.array(s.fleet),
     }
 end
 
@@ -677,8 +712,11 @@ function LedgerProbe.init(ctx)
         contextMoney = {},
         workedHa = {},
         finances = { order = {}, snapshots = {} },
-        shop = { bookings = {}, vehicleAdded = {} },
+        shop = { bookings = {}, vehicleAdded = {}, vehicleRemoved = {} },
+        fleet = {},
+        fleetMs = 0,
     }
+    pcall(sampleFleet, state, "init")
     state.finances.statNames = section("statNames", statNames)
     local handle, file = openHandle(dir)
     state.handle = handle
@@ -691,6 +729,10 @@ end
 function LedgerProbe.update(dt, _ctx)
     local s = state
     trackUpdate(s, dt)
+    if s.fleetMs < LedgerProbe.FLEET_MS then
+        s.fleetMs = s.fleetMs + (type(dt) == "number" and dt or 0)
+        pcall(sampleFleet, s, "update")
+    end
     if s.handleFile ~= nil then
         s.handleElapsedMs = s.handleElapsedMs + (dt or 0)
         if s.handleElapsedMs >= LedgerProbe.HANDLE_DELAY_MS then

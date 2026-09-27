@@ -97,6 +97,10 @@ export const VehicleAddedData = z.object({
   /** Store item XML filename. */
   storeItem: z.string().min(1),
   name: z.string(),
+  /**
+   * What was paid: the shop booking paired with the machine, which for a lease is the fee paid up
+   * front. The store price when none paired, for example for machines bought together as a pack.
+   */
   price: z.number().min(0),
   leased: z.boolean(),
   /** Hours already on the clock, for a used machine; absent means 0. */
@@ -105,8 +109,11 @@ export const VehicleAddedData = z.object({
 
 export const VehicleRemovedData = z.object({
   vehicleId: VehicleId,
-  reason: z.enum(["sold", "deleted"]),
+  /** `returned`: a leased machine given back. `deleted`: gone without a sale. */
+  reason: z.enum(["sold", "returned", "deleted"]),
   operatingHours: z.number().min(0).nullable(),
+  /** What the sale brought, from the shop booking paired with it. */
+  salePrice: z.number().min(0).optional(),
 });
 
 export const VehicleHoursData = z.object({

@@ -9,6 +9,7 @@ import { createSave, hasPostgres, insertEvents, type Query, useDatabase } from "
 const KEYS: Record<string, string[]> = {
   field_season_pnl: ["farm_id", "season", "field_id"],
   vehicle_cost_per_hour: ["vehicle_id"],
+  vehicles: ["vehicle_id"],
   worker_downtime: ["season", "farm_id", "reason"],
   money_reconciliation: ["farm_id", "from_day", "to_day"],
   prices: ["day", "station_id", "fill_type"],

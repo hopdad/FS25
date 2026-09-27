@@ -72,6 +72,8 @@ select
   min(day) filter (where type = 'vehicle_added') as bought_day,
   max(day) filter (where type = 'vehicle_removed' and data ->> 'reason' = 'sold') as sold_day,
   max(day) filter (where type = 'vehicle_removed') as removed_day,
+  (array_agg((data ->> 'salePrice')::numeric order by seq desc)
+    filter (where type = 'vehicle_removed' and data ->> 'salePrice' is not null))[1] as sale_price,
   max(operating_hours) filter (where type in ('vehicle_hours', 'vehicle_removed')) as operating_hours,
   (array_agg((data ->> 'sellValue')::numeric order by seq desc)
     filter (where type = 'vehicle_hours' and data ->> 'sellValue' is not null))[1] as sell_value,
@@ -105,10 +107,11 @@ cross join lateral jsonb_array_elements(coalesce(latest.payload -> 'fields', '[]
 -- Analytics ---------------------------------------------------------------------------------------
 
 -- What each machine costs per operating hour: (capital + fuel + wages + repairs and other upkeep)
--- ÷ hours since bought. Capital is what was paid (the shop money booked to the machine, else its
--- price) less what it brought back: the sale income once sold, nothing once gone without a sale,
--- else what the shop would pay today. For a leased machine capital is the fee paid up front, and the
--- running leasing costs are upkeep. Capital is unknown for a machine the farm had before FarmLink.
+-- ÷ hours since bought. Capital is what was paid (the shop money booked to the machine, else the
+-- price on vehicle_added) less what it brought back: the sale once sold (the shop money booked to
+-- it, else the sale price on vehicle_removed), nothing once gone without a sale, else what the shop
+-- would pay today. For a leased machine capital is the fee paid up front, and the running leasing
+-- costs are upkeep. Capital is unknown for a machine the farm had before FarmLink.
 -- machine_cost_per_hour leaves wages out; field P&L adds wages separately.
 create view public.vehicle_cost_per_hour with (security_invoker = true) as
 with money as (
@@ -135,16 +138,17 @@ costs as (
 priced as (
   select
     v.*,
-    c.purchase_paid,
-    c.sale_income,
+    case when v.bought_day is not null then coalesce(c.purchase_paid, v.price) end as paid,
+    coalesce(c.sale_income, v.sale_price) as sold_for,
     coalesce(c.fuel, 0) as fuel,
     coalesce(c.wages, 0) as wages,
     coalesce(c.upkeep, 0) as upkeep,
     case
-      when v.leased then c.purchase_paid
       when v.bought_day is null then null
+      when v.leased then coalesce(c.purchase_paid, v.price)
       else coalesce(c.purchase_paid, v.price) - coalesce(
         c.sale_income,
+        v.sale_price,
         case when v.removed_day is not null then 0 end,
         v.sell_value
       )
@@ -162,8 +166,8 @@ select
   leased,
   bought_day,
   sold_day,
-  purchase_paid,
-  sale_income,
+  paid as purchase_paid,
+  sold_for as sale_income,
   sell_value,
   capital_cost,
   capital_cost is not null as capital_known,

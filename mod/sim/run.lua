@@ -76,20 +76,21 @@ if resumeDirectory == nil then
     Engine.startJob(combineJob)
 
     -- What the ledger (P2) will book, for the probe's ledger section: a sale, a refuel, a sowing stat,
-    -- a pause, a new day and a sold vehicle.
+    -- a pause and a new day.
     Engine.sell(1, "WHEAT", 12000)
     Engine.refuel(tractor, 0.5)
     g_farmManager:updateFarmStats(1, "sownHectares", 1.25)
     Engine.pause(20)
     Engine.newDay()
-    g_messageCenter:publish(MessageType.VEHICLE_REMOVED)
 
     -- For the money funnel's questions: wages the AI system books as the combine works, a repair,
-    -- seed the combine's worker buys, a machine bought in the shop, and the end of a month.
+    -- seed the combine's worker buys, a machine bought in the shop and sold again, and the end of a
+    -- month.
     combineJob:updateCost(100000)
     Engine.repair(tractor, 1840)
     Engine.workArea(combine, SowingMachine, 5000, 12.5)
-    Engine.buyVehicle(Engine.newVehicle({ uniqueId = "vehicle3c1d", name = "Kubota M7" }), 110000)
+    local kubota = Engine.buyVehicle(Engine.newVehicle({ uniqueId = "vehicle3c1d", name = "Kubota M7" }), 110000)
+    Engine.sellVehicle(kubota, 99000)
     Engine.newDay()
     Engine.newDay()
 

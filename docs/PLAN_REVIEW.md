@@ -300,6 +300,8 @@ in particular, may change P1 before its own in-game test ([P1_TEST.md](P1_TEST.m
   - the money funnel, with its contexts and coalescing;
   - worker starts and stops, with their wages;
   - harvest and field work, by field;
+  - the machines: baseline hours, purchases and sales paired with their shop money, and daily
+    hours;
   - the day rollover and daily prices.
 
   The simulated session reconciles money against the balance between rollovers, which is the P2

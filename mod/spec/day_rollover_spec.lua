@@ -45,13 +45,14 @@ describe("the day rollover and daily prices", function()
         Engine.newDay()
         Engine.run(1.1)
 
+        -- The machines' first hours come before the rollover too: the tractor's and its seeder's.
         local log = events()
         local types = {}
         for i, event in ipairs(log) do
             types[i] = event.type
         end
-        assert.are.same({ "session", "prices", "money", "day_rollover", "prices" }, types)
-        local rollover = log[4]
+        assert.are.same({ "session", "prices", "money", "vehicle_hours", "vehicle_hours", "day_rollover", "prices" }, types)
+        local rollover = log[6]
         assert.are.equal(1, rollover.farmId)
         assert.are.equal(38, rollover.day)
         assert.are.same({

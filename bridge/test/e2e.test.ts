@@ -160,6 +160,7 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       workListeners: "pass",
       finances: "pass",
       shopOrder: "pass",
+      fleetLoaded: "pass",
       moneyTypes: "pass",
       events: "pass",
     });
@@ -333,6 +334,20 @@ describe.skipIf(!lua)("the event log written by the mod's Lua", () => {
         6,
       );
       expect((wage?.seq ?? 0) < (stop?.seq ?? 0)).toBe(true);
+
+      // The machine bought and the machine sold carry the shop money paired with them.
+      const bought = parent.find((e) => e.type === "vehicle_added");
+      const sold = parent.find((e) => e.type === "vehicle_removed");
+      expect(bought?.data).toMatchObject({
+        vehicleId: "vehicle3c1d",
+        price: 110000,
+        leased: false,
+      });
+      expect(sold?.data).toMatchObject({
+        vehicleId: "vehicle55aa",
+        reason: "sold",
+        salePrice: 238000,
+      });
 
       const meta = Meta.parse(JSON.parse(readFileSync(join(summary.saveDir, "meta.json"), "utf8")));
       expect(meta.branchId).toBe(summary.branchId);

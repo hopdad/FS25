@@ -31,6 +31,7 @@ local SOURCES = {
     "scripts/ledger/MoneyFunnel.lua",
     "scripts/ledger/Harvest.lua",
     "scripts/ledger/FieldWork.lua",
+    "scripts/ledger/Machines.lua",
     "scripts/ledger/DayRollover.lua",
     "scripts/ledger/Prices.lua",
     "scripts/hooks/AIWorkers.lua",
@@ -60,6 +61,7 @@ if FarmLink.registry == nil then
     FarmLink.registry:add(FarmLink.MoneyFunnel)
     FarmLink.registry:add(FarmLink.Harvest)
     FarmLink.registry:add(FarmLink.FieldWork)
+    FarmLink.registry:add(FarmLink.Machines)
     -- A new day's rollover, then its prices: both listen to DAY_CHANGED, in this order.
     FarmLink.registry:add(FarmLink.DayRollover)
     FarmLink.registry:add(FarmLink.Prices)

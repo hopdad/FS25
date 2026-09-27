@@ -816,6 +816,7 @@
               "type": "string",
               "enum": [
                 "sold",
+                "returned",
                 "deleted"
               ]
             },
@@ -829,6 +830,10 @@
                   "type": "null"
                 }
               ]
+            },
+            "salePrice": {
+              "type": "number",
+              "minimum": 0
             }
           },
           "required": [
