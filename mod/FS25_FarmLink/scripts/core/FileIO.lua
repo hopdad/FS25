@@ -126,6 +126,76 @@ function FileIO.writeText(path, text)
     return false, "no file write API"
 end
 
+---Appends text to path, creating the file if needed. Fails where the sandbox refuses append mode,
+---which the event log takes as its cue to keep a handle open instead (PLAN_REVIEW.md F1).
+---@param path string
+---@param text string
+---@return boolean ok, string|nil err
+function FileIO.appendText(path, text)
+    if type(io) ~= "table" or type(io.open) ~= "function" then
+        return false, "no io.open"
+    end
+    local ok, file, openErr = pcall(io.open, path, "a")
+    if not ok then
+        return false, tostring(file)
+    end
+    if file == nil then
+        return false, tostring(openErr)
+    end
+    local written, result, writeErr = pcall(file.write, file, text)
+    pcall(file.close, file)
+    if not written then
+        return false, tostring(result)
+    end
+    if result == nil then
+        return false, tostring(writeErr)
+    end
+    return true, nil
+end
+
+---Opens path for writing and keeps it open, replacing any file already there. The caller writes
+---with writeHandle and closes with closeHandle.
+---@param path string
+---@return table|nil handle, string|nil err
+function FileIO.openHandle(path)
+    if type(io) ~= "table" or type(io.open) ~= "function" then
+        return nil, "no io.open"
+    end
+    local ok, file, openErr = pcall(io.open, path, "w")
+    if not ok then
+        return nil, tostring(file)
+    end
+    if file == nil then
+        return nil, tostring(openErr)
+    end
+    return file, nil
+end
+
+---Writes text through a kept-open handle and flushes it, so a reader sees whole batches.
+---@param handle table
+---@param text string
+---@return boolean ok, string|nil err
+function FileIO.writeHandle(handle, text)
+    local ok, result, writeErr = pcall(handle.write, handle, text)
+    if not ok then
+        return false, tostring(result)
+    end
+    if result == nil then
+        return false, tostring(writeErr)
+    end
+    if type(handle.flush) == "function" then
+        pcall(handle.flush, handle)
+    end
+    return true, nil
+end
+
+---@param handle table
+function FileIO.closeHandle(handle)
+    if handle ~= nil and type(handle.close) == "function" then
+        pcall(handle.close, handle)
+    end
+end
+
 ---@param path string
 ---@return boolean
 function FileIO.exists(path)

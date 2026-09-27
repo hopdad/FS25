@@ -23,6 +23,7 @@ local SOURCES = {
     "scripts/core/Game.lua",
     "scripts/core/Registry.lua",
     "scripts/core/Persistence.lua",
+    "scripts/core/EventLog.lua",
     "scripts/core/Meta.lua",
     "scripts/hooks/AIWorkers.lua",
     "scripts/collectors/Vehicle.lua",
@@ -43,6 +44,9 @@ local Log = FarmLink.Log
 
 if FarmLink.registry == nil then
     FarmLink.registry = FarmLink.Registry.new(Log)
+    -- The event log first: it settles which branch this session writes to before anything else
+    -- starts, meta.json included, and it is ready before any module emits.
+    FarmLink.registry:add(FarmLink.EventLog)
     FarmLink.registry:add(FarmLink.Meta)
     -- Workers first: the fleet channel reads the worker registry.
     FarmLink.registry:add(FarmLink.AIWorkers)
@@ -195,12 +199,16 @@ end
 
 -- Career save --------------------------------------------------------------------------------------
 
----Appended to FSCareerMissionInfo.saveToXMLFile: writes farmLink.xml next to the save.
+---Appended to FSCareerMissionInfo.saveToXMLFile: writes farmLink.xml next to the save. Modules
+---first flush what they are still collecting (beforeSave), then the event log writes it and records
+---its seq (checkpoint), so the savegame's seq covers every event before the save.
 function FarmLink.onCareerSaved(missionInfo)
     local ctx = FarmLink.ctx
     if ctx == nil or not ctx.isAuthority then
         return
     end
+    FarmLink.registry:call("beforeSave", true, ctx, missionInfo)
+    FarmLink.registry:call("checkpoint", true, ctx)
     local directory = type(missionInfo) == "table" and missionInfo.savegameDirectory or nil
     local ok, err = FarmLink.Persistence.save(directory, ctx.ledger)
     ctx.lastSave = { ok = ok, err = err }

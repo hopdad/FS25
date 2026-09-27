@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { FILES, LIVE_PORT, LiveVehicle, ProbeReport } from "@farmlink/schema";
 import { type Environment, type ResolvedRoot, resolveRoot } from "./config";
+import { eventChecks } from "./doctorEvents";
 import { ledgerChecks } from "./doctorLedger";
 import { collectLive, type LiveReport, liveChecks } from "./doctorLive";
 import { defaultStateDir } from "./state";
@@ -342,6 +343,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
         ]),
     ...liveChecks(live),
     ...ledgerChecks(probeData, await readHandleTest(root.root)),
+    ...(await eventChecks(active?.dir, active?.meta)),
   ];
   return report;
 }
@@ -391,7 +393,7 @@ export function formatDoctor(report: DoctorReport): string {
     report.checks.filter((c) => c.phase === "P1"),
   );
   section(
-    "P2 questions, answered in the same session:",
+    "P2 questions, answered in the same session, and the event log:",
     report.checks.filter((c) => c.phase === "P2"),
   );
   const state = report.live.bridgeState;

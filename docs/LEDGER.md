@@ -24,6 +24,31 @@ Migrations: [`supabase/migrations/`](../supabase/migrations). The bridge never i
 itself: an event's insert trigger creates its branch, and a `session` event records where the
 branch forked and when it was played.
 
+## The event log in the game
+
+The mod writes each event as one JSON line to
+`modSettings/FS25_FarmLink/<saveId>/events/<day>.ndjson`, where the day is the game day it happened
+on. Lines go out in batches: once a second of real time, when the career is saved, and when the
+session ends. The code is `mod/FS25_FarmLink/scripts/core/EventLog.lua`.
+
+- **Seqs never repeat.** `heads.xml`, next to the log, holds the highest seq claimed on each branch.
+  Every batch claims its seqs there before its lines are written. A crash can therefore leave a gap,
+  which the bridge reports, but never write the same key twice (PLAN_REVIEW.md F2).
+- **The savegame knows where it stands.** `farmLink.xml` in the savegame folder records the branch
+  and seq the save was made at. Before recording it, every module flushes what it is still
+  collecting, and the log writes it.
+- **Loading an older save forks.** If the savegame's seq is behind its branch's head in
+  `heads.xml`, events were logged that this savegame never saw. The session then starts a new branch
+  that continues from the savegame's seq. Its first line, a `session` event, names the parent branch
+  and the fork seq. Loading a save and quitting without saving has the same effect the next time that
+  save is loaded.
+- **If the game refuses append mode** (F1, answered by the P0 probe), the log keeps a file open per
+  day instead, named `<day>-<session>-<n>.ndjson`.
+
+The bridge reads each complete line and checks it against the contract. It then runs the gap check:
+each branch starts at 1, or right after its fork seq, and has no holes. `--doctor` reports both in
+its "Event log" line, along with the write mode the mod is using.
+
 ## Which events count
 
 Reloading an older savegame starts a new branch (PLAN_REVIEW.md F2). Its first event is a `session`

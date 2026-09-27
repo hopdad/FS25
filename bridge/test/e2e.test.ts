@@ -20,6 +20,9 @@ import addFormats from "ajv-formats";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { CommandWriter } from "../src/commands/writer";
 import { runDoctor } from "../src/doctor";
+import { eventChecks } from "../src/doctorEvents";
+import { EventLogReader } from "../src/events/reader";
+import { SequenceCheck } from "../src/events/sequence";
 import { AlertEngine } from "../src/live/alerts";
 import { BridgeState } from "../src/state";
 import { tempRoot } from "./fixtures";
@@ -154,6 +157,7 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       day: "pass",
       prices: "pass",
       moneyTypes: "pass",
+      events: "pass",
     });
     expect(report.live.fleet.stops).toMatchObject([{ helper: "Sam", reason: "ERROR_OUT_OF_FUEL" }]);
     expect(report.checks.find((c) => c.id === "pause")?.detail).toBe(
@@ -211,4 +215,98 @@ describe.skipIf(!lua)("a worker stop sent by the bridge and run by the mod's Lua
     });
     expect(JSON.stringify(report)).not.toContain(state.pairingToken);
   });
+});
+
+interface LedgerSummary {
+  saveId: string;
+  saveDir: string;
+  parentBranchId: string;
+  branchId: string;
+  savedSeq: number;
+  lastSeq: number;
+  mode: string;
+}
+
+/** Runs mod/sim/ledger.lua: every event type, a save, two more events, then a reload that forks. */
+function simulateLedger(profile: string, args: string[]): LedgerSummary {
+  const stdout = execFileSync(lua as string, [join(repo, "mod/sim/ledger.lua"), profile, ...args], {
+    encoding: "utf8",
+  });
+  return JSON.parse(stdout.trim().split("\n").at(-1) ?? "{}");
+}
+
+const EVENT_TYPES = [
+  "day_rollover",
+  "field_work",
+  "harvest",
+  "money",
+  "prices",
+  "session",
+  "vehicle_added",
+  "vehicle_hours",
+  "vehicle_removed",
+  "worker_start",
+  "worker_stop",
+];
+
+describe.skipIf(!lua)("the event log written by the mod's Lua", () => {
+  for (const mode of ["append", "handle"] as const) {
+    it(`matches the contract and forks on reload, ${mode === "append" ? "appending" : "with append mode refused"}`, async () => {
+      const summary = simulateLedger(tempRoot(), mode === "handle" ? ["--block-append"] : []);
+      expect(summary.mode).toBe(mode);
+
+      const lines = await new EventLogReader(summary.saveDir).read();
+      expect(lines.filter((l) => !l.ok)).toEqual([]);
+      const events = lines.flatMap((l) => (l.ok ? [l.event] : []));
+      expect([...new Set(events.map((e) => e.type))].sort()).toEqual(EVENT_TYPES);
+      expect(new Set(events.map((e) => e.saveId))).toEqual(new Set([summary.saveId]));
+
+      // The same lines against the exported JSON Schema.
+      const ajv = new Ajv2020({ strict: false, allErrors: true });
+      addFormats(ajv);
+      const validate = ajv.compile(
+        JSON.parse(
+          readFileSync(
+            join(repo, "packages/schema/json-schema/event-envelope.schema.json"),
+            "utf8",
+          ),
+        ),
+      );
+      for (const event of events) {
+        expect(validate(event), JSON.stringify(validate.errors)).toBe(true);
+      }
+
+      // Saved at seq 17, two events after the save, then the reload forks from 17.
+      expect(summary.savedSeq).toBe(17);
+      const check = new SequenceCheck();
+      for (const event of events) check.add(event);
+      expect(check.gaps).toEqual([]);
+      expect(check.duplicates).toBe(0);
+      expect(check.summary.sort((a, b) => a.first - b.first)).toEqual([
+        {
+          branchId: summary.parentBranchId,
+          first: 1,
+          last: 19,
+          events: 19,
+          parentBranchId: null,
+          forkSeq: null,
+        },
+        {
+          branchId: summary.branchId,
+          first: 18,
+          last: 19,
+          events: 2,
+          parentBranchId: summary.parentBranchId,
+          forkSeq: 17,
+        },
+      ]);
+
+      const meta = Meta.parse(JSON.parse(readFileSync(join(summary.saveDir, "meta.json"), "utf8")));
+      expect(meta.branchId).toBe(summary.branchId);
+      expect(meta.heads).toEqual({ [summary.parentBranchId]: 19, [summary.branchId]: 18 });
+      const [doctor] = await eventChecks(summary.saveDir, meta);
+      expect(doctor).toMatchObject({ status: "pass" });
+      expect(doctor?.detail).toContain("on 2 branches");
+    });
+  }
 });

@@ -5,6 +5,8 @@
 -- ledger lives) or "any", and any of these functions:
 --   init(ctx)            mission start, after the ledger identity is known
 --   update(dt, ctx)      every frame; dt is real milliseconds
+--   beforeSave(ctx, info) the career is being saved: flush anything still being collected
+--   checkpoint(ctx)      then the event log writes it and records its seq (the event log only)
 --   onSave(ctx, info)    after the career save wrote the savegame
 --   shutdown(ctx)        mission end
 

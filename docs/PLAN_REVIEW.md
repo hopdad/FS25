@@ -282,6 +282,9 @@ in particular, may change P1 before its own in-game test ([P1_TEST.md](P1_TEST.m
 **P2 foundations that need no game session.** While the P0 and P1 runs wait for the PC:
 
 - The probe asks the P2 questions in the same session (see VERIFY_FIRST.md).
+- The mod's event log: seqs claimed before they are written, the fork on loading an older save
+  (F2), and kept-open files where append mode is refused (F1). The bridge follows the log, checks
+  every line and reports seq gaps, in `bridge.log` and `--doctor`.
 - `supabase/`: the tables, row-level security, the branch rule and the analytics views
   ([LEDGER.md](LEDGER.md)).
 - `packages/schema/fixtures/ledger/`: golden fixtures that pin every formula.

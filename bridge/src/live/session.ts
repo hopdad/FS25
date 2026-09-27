@@ -11,6 +11,7 @@ import {
 } from "@farmlink/schema";
 import { HeartbeatWriter } from "../commands/heartbeat";
 import { type CommandNumbering, CommandWriter } from "../commands/writer";
+import { EventLogWatcher } from "../events/watcher";
 import { LiveWatcher } from "../watch/live";
 import { AlertEngine, type AlertRules } from "./alerts";
 import type { LiveHub } from "./hub";
@@ -49,6 +50,8 @@ export class SaveSession {
   private readonly alerts: AlertEngine;
   private readonly heartbeat: HeartbeatWriter;
   private readonly acks: LiveWatcher<AckRing>;
+  /** The save's event log (P2): validated and gap-checked as it grows. */
+  readonly events: EventLogWatcher;
   private readonly parts: Startable[];
   private ready: Promise<void> = Promise.resolve();
   private online = false;
@@ -135,7 +138,8 @@ export class SaveSession {
         }),
       onInvalid: invalid(FILES.meta),
     });
-    this.parts = [meta, vehicle, fleet, farm, this.acks, this.heartbeat];
+    this.events = new EventLogWatcher({ saveDir: dir, pollMs: 2000 * scale, log });
+    this.parts = [meta, vehicle, fleet, farm, this.acks, this.heartbeat, this.events];
   }
 
   get isOnline(): boolean {

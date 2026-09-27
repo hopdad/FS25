@@ -29,7 +29,9 @@ the farm and alerts. [docs/P1_TEST.md](docs/P1_TEST.md) is the 30-minute script 
 - the branch rule, so a reloaded older save never double-counts;
 - the analytics views: field P&L, machine cost per hour, worker downtime and money reconciliation.
 
-Golden fixtures pin each formula. The mod's event log and the bridge's sync come next;
+Golden fixtures pin each formula. The mod writes the event log, and forks a new branch when an
+older save is loaded; the bridge checks every line and reports gaps. The events themselves (money,
+harvest, field work, machines, workers, prices) and the sync to Supabase come next.
 [docs/LEDGER.md](docs/LEDGER.md) describes the ledger.
 
 | Document | What it is |

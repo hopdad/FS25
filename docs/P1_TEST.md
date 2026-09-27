@@ -62,6 +62,10 @@ Load a single-player career with FarmLink ticked, and keep the phone beside the 
    paused.
 5. **Leaving.** Quit to the main menu. Within about 15 seconds the phone should show
    **Game offline** and a pop-up saying so.
+6. **Optional, for P2: a reload.** Load the same career again and quit to the menu right away,
+   without saving; then load it once more and leave it running for the send-back step. Each visit
+   that was not saved is a line of play the savegame does not have, so the ledger starts a new
+   branch; the doctor's event log line should then say 2 or more branches and `no gaps`.
 
 ## 4. Multiplayer that you host
 

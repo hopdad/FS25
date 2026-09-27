@@ -25,6 +25,7 @@ end
 function Meta.build(ctx)
     local Json = FarmLink.Json
     local live = ctx.stats.live
+    local lastSeq, heads = FarmLink.EventLog.status()
     local average = 0
     if live.timed > 0 then
         average = round(live.totalMs / live.timed, 4)
@@ -37,8 +38,8 @@ function Meta.build(ctx)
         saveId = ctx.ledger.saveId,
         branchId = ctx.ledger.branchId,
         schemaVersion = FarmLink.SCHEMA_VERSION,
-        lastSeq = 0,
-        heads = Json.object({}),
+        lastSeq = lastSeq or ctx.ledger.seq or 0,
+        heads = Json.object(heads or {}),
         heartbeat = FarmLink.Clock.realTimestamp(),
         beat = state.beat,
         mode = ctx.mode,
@@ -50,6 +51,7 @@ function Meta.build(ctx)
             liveWriteMaxMs = round(live.maxMs, 4),
             moduleErrors = Json.object(ctx.registry:errorTotals()),
             disabledModules = Json.array(ctx.registry:disabledNames()),
+            events = FarmLink.EventLog.stats(),
         },
     }
 end

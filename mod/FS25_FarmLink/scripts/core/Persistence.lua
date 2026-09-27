@@ -1,6 +1,6 @@
 -- farmLink.xml in the savegame folder: the ledger identity, which has to travel with the save and roll
--- back with it. It stores saveId, branchId and the command watermark; P2 adds the seq high-water,
--- aggregates and the worker registry.
+-- back with it. It stores saveId, branchId, the event log's seq when the save was made, and the
+-- command watermark; later P2 work adds aggregates and the worker registry.
 --
 -- Read when the mission loads and written from FSCareerMissionInfo.saveToXMLFile (hooked once in
 -- FarmLink.lua). A career that was never saved has no savegameDirectory yet: it gets new ids, which
@@ -27,10 +27,10 @@ end
 
 ---Reads the ledger identity for a savegame, or creates a new one.
 ---@param savegameDirectory string|nil
----@return table ledger { saveId, branchId, isNew, loadedFrom, commandEpoch, commandWatermark }
+---@return table ledger { saveId, branchId, seq, isNew, loadedFrom, commandEpoch, commandWatermark }
 function Persistence.load(savegameDirectory)
     local Ids = FarmLink.Ids
-    local ledger = { isNew = true, loadedFrom = nil }
+    local ledger = { isNew = true, loadedFrom = nil, seq = 0 }
 
     if hasDirectory(savegameDirectory) and type(XMLFile) == "table" then
         local path = Persistence.path(savegameDirectory)
@@ -38,12 +38,16 @@ function Persistence.load(savegameDirectory)
         if xml ~= nil then
             local saveId = xml:getString(Persistence.ROOT .. ".save#id")
             local branchId = xml:getString(Persistence.ROOT .. ".save#branchId")
+            local seq = xml:getInt(Persistence.ROOT .. ".save#seq")
             local commandEpoch = xml:getString(Persistence.ROOT .. ".commands#epoch")
             local commandWatermark = xml:getInt(Persistence.ROOT .. ".commands#watermark")
             xml:delete()
             if Ids.isUuid(saveId) and Ids.isUuid(branchId) then
                 ledger.saveId = saveId
                 ledger.branchId = branchId
+                if type(seq) == "number" and seq > 0 then
+                    ledger.seq = seq
+                end
                 ledger.isNew = false
                 ledger.loadedFrom = path
                 if Ids.isUuid(commandEpoch) and type(commandWatermark) == "number" then
@@ -83,6 +87,7 @@ function Persistence.save(savegameDirectory, ledger)
         xml:setInt(Persistence.ROOT .. "#format", Persistence.FORMAT)
         xml:setString(Persistence.ROOT .. ".save#id", ledger.saveId)
         xml:setString(Persistence.ROOT .. ".save#branchId", ledger.branchId)
+        xml:setInt(Persistence.ROOT .. ".save#seq", ledger.seq or 0)
         if ledger.commandEpoch ~= nil then
             xml:setString(Persistence.ROOT .. ".commands#epoch", ledger.commandEpoch)
             xml:setInt(Persistence.ROOT .. ".commands#watermark", ledger.commandWatermark or 0)

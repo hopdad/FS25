@@ -744,6 +744,19 @@ function Engine.install(opts)
 
     Engine.profileDir = profileDir
     Engine.listeners = {}
+
+    -- opts.blockAppend: refuse io.open's append mode, as the FS25 sandbox might (PLAN_REVIEW.md F1).
+    Engine.realIoOpen = Engine.realIoOpen or io.open
+    io.open = Engine.realIoOpen
+    if opts.blockAppend then
+        io.open = function(path, mode)
+            if type(mode) == "string" and mode:sub(1, 1) == "a" then
+                return nil, path .. ": Permission denied"
+            end
+            return Engine.realIoOpen(path, mode)
+        end
+    end
+    g_modIsLoaded = opts.modsLoaded or {}
     Engine.saveCalls = 0
     Engine.logLines = {}
 

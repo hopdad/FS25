@@ -66,6 +66,26 @@ function Clock.gameDay()
     return math.max(0, math.floor(day))
 end
 
+local function wholeNumber(value, default, minimum)
+    if type(value) ~= "number" or value ~= value then
+        return default
+    end
+    return math.max(minimum, math.floor(value))
+end
+
+---The game calendar: environment.currentYear, the period (1 = March ... 12 = February), the day of
+---that period and how many days each period has. Seasons are game years (PLAN_REVIEW.md C1).
+---@return table { year, period, dayInPeriod, daysPerPeriod }
+function Clock.calendar()
+    local env = environment() or {}
+    return {
+        year = wholeNumber(env.currentYear, 0, 0),
+        period = math.min(12, wholeNumber(env.currentPeriod, 1, 1)),
+        dayInPeriod = wholeNumber(env.currentDayInPeriod, 1, 1),
+        daysPerPeriod = wholeNumber(env.daysPerPeriod, 1, 1),
+    }
+end
+
 ---Minute of the in-game day, from environment.dayTime (ms since midnight).
 ---@return integer
 function Clock.minuteOfDay()

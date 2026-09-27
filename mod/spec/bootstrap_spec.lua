@@ -17,7 +17,10 @@ describe("FarmLink bootstrap", function()
         assert.are.equal(1, meta.beat)
         assert.are.equal("singleplayer", meta.mode)
         assert.are.equal(FarmLink.ctx.ledger.saveId, meta.saveId)
-        assert.are.same({}, meta.heads)
+        -- The event log's first line, the session event, is already written and claimed.
+        assert.are.equal(1, meta.lastSeq)
+        assert.are.same({ [FarmLink.ctx.ledger.branchId] = 1 }, meta.heads)
+        assert.are.equal("append", meta.stats.events.mode)
         assert.is_nil(Engine.readFile(saveDir() .. "live_vehicle.json"))
 
         g_localPlayer.vehicle = helper.tractor()
