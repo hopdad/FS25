@@ -126,6 +126,10 @@ then `verifyOtp`) uses the same accounts and needs no redirect URL.
   `Motorized` fuel path are copied into vehicle types when types are finalized. Reassigning them
   after load has no effect; they are hooked with `SpecializationUtil.registerOverwrittenFunction`
   from an appended `registerOverwrittenFunctions`, at file scope.
+- **Specialization events are different.** `SpecializationUtil.raiseEvent` calls
+  `spec[eventName]` on the specialization's class each time the event fires. A listener such as
+  `SowingMachine.onEndWorkAreaProcessing` can therefore be wrapped on the class, at file scope, and
+  the wrapper reaches every vehicle. The P2 probe confirms this in the game.
 - **Reloads.** Mod Lua state survives a savegame reload. Class-method hooks are installed once per
   process behind a guard; per-mission state is reset in `loadMap` and `deleteMap`, and message-center
   subscriptions are removed in `deleteMap`. Otherwise the second save loaded in one game session

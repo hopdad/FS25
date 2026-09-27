@@ -61,8 +61,11 @@ selection. Then:
 6. **Field work (optional).** Sow, spray, cultivate or plow for about 30 seconds.
 7. **Pause.** Press Esc, wait 20 seconds, and carry on.
 8. **A new day (optional).** Sleep, or fast-forward until the clock passes midnight.
-9. **Save.** Press Esc and save the game.
-10. **Run the doctor.** Get back into a vehicle, stop the bridge with Ctrl+C and run:
+9. **Machines and a new month (optional).** Repair any machine. Buy or lease a cheap machine or
+   tool in the shop. If the game setting that lets helpers buy seed is on, hire one to sow for a
+   minute. If the month is about to end, sleep through its last day.
+10. **Save.** Press Esc and save the game.
+11. **Run the doctor.** Get back into a vehicle, stop the bridge with Ctrl+C and run:
 
    ```sh
    farmlink-bridge.exe --doctor
@@ -90,9 +93,9 @@ Items 4 to 6 need the actions in step 3. A TODO on them means the action was not
 session, not that something is broken.
 
 The same session also answers what the ledger (P2) needs to know: whether the mod keeps running
-while the game is paused, how sales, fuel and field work reach the game's books, and what a new day
-looks like. The doctor lists those under "P2 questions"; steps 3 and 6 to 8 feed them, and a TODO
-there again only means the action did not happen.
+while the game is paused; how sales, fuel, wages, repairs, field work and purchases reach the game's
+books; and what a new day and a new month look like. The doctor lists those under "P2 questions";
+steps 3, 4 and 6 to 9 feed them, and a TODO there again only means the action did not happen.
 
 ## If something goes wrong
 

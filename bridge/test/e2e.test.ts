@@ -156,6 +156,10 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       farmStats: "pass",
       day: "pass",
       prices: "pass",
+      moneyContext: "pass",
+      workListeners: "pass",
+      finances: "pass",
+      shopOrder: "pass",
       moneyTypes: "pass",
       events: "pass",
     });

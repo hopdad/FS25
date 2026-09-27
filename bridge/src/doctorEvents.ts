@@ -41,8 +41,10 @@ export async function eventChecks(
   const files = Object.keys(reader.offsets).length;
   const branches = sequence.summary;
   const current = meta ? branches.find((branch) => branch.branchId === meta.branchId) : undefined;
+  const plural = (count: number, word: string, suffix = "s") =>
+    `${count} ${word}${count === 1 ? "" : suffix}`;
   const parts = [
-    `${lines.length} lines in ${files} files on ${branches.length} branch${branches.length === 1 ? "" : "es"}`,
+    `${plural(lines.length, "line")} in ${plural(files, "file")} on ${plural(branches.length, "branch", "es")}`,
   ];
   if (current && meta) {
     parts.push(

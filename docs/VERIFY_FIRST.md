@@ -202,6 +202,11 @@ from the game.
 | What does a new day carry? | `DAY_CHANGED`, `HOUR_CHANGED`, `PERIOD_CHANGED`, `YEAR_CHANGED`, with the calendar at each new day | VDTelemetry `WeatherExporter.lua` | pending |
 | Where do daily prices come from? | `storageSystem:getUnloadingStations()`, selling points' `getEffectiveFillTypePrice(fillTypeIndex)` per liter | InvestorFarm `IFValuation.lua`, VDTelemetry `PricesExporter.lua` | pending |
 | Does `VEHICLE_REMOVED` carry arguments? | Counts it and records the argument count | Handoff, fleet diff | pending |
+| Is every wage booked inside `AIJob.updateCost` or `AIJob.stop`? | Money of each type booked while inside the functions below, against all of it | Dump `ai/jobs/AIJob.lua` (wages accrue per frame, booked past 25 and at stop), `ai/AISystem.lua` (`stopJobInternal` calls `job:stop` before `AI_JOB_STOPPED`) | pending |
+| Are repairs booked inside `WearableRepairEvent.run`? | As above | LUADOC `Wearable:repairVehicle`, `WearableRepairEvent:run` | pending |
+| Does seed or fertilizer a hired worker buys come through `SowingMachine` and `Sprayer` `onEndWorkAreaProcessing`, and do wrapped listeners fire? | Calls, hectares from `workAreaParameters.lastStatsArea`, and the money booked inside | LUADOC `SowingMachine:onEndWorkAreaProcessing`; `SpecializationUtil.raiseEvent` looks each listener up by name when it fires | pending |
+| What do a farm's finance statistics hold when a day and a month end? | Balance, loan, the month's bucket and the archived months at `DAY_CHANGED` and `PERIOD_CHANGED`, and the order the two arrive in | VDTelemetry `FinanceExporter.lua`: `FarmStats.finances` is per month, archived onto `financesHistory` on `PERIOD_CHANGED` | pending |
+| Does a bought machine exist when its price is booked? | Shop and leasing bookings with the machine count and frame, next to each `VEHICLE_ADDED` | Dump `VehicleSystem.lua`: `addVehicle` publishes `VEHICLE_ADDED` | pending |
 
 ## Sources
 

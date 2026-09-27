@@ -67,7 +67,10 @@ describe("P0 probe", function()
         assert.is_function(rawget(mission, "addMoney"))
         Engine.unloadMission()
         assert.is_nil(rawget(mission, "addMoney"))
-        assert.are.equal(0, #g_messageCenter.subscribers)
+        -- Only the game's own listeners are left (the farms' statistics).
+        for _, entry in ipairs(g_messageCenter.subscribers) do
+            assert.are.equal(g_farmManager, entry.target)
+        end
     end)
 
     it("hooks Farm.changeBalance once per process, not once per mission", function()

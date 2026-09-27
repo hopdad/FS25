@@ -185,7 +185,7 @@ describe("the event log check in --doctor", () => {
     const [check] = await eventChecks(saveDir, meta({ lastSeq: 2 }) as never);
     expect(check).toMatchObject({ id: "events", status: "pass", phase: "P2" });
     expect(check?.detail).toBe(
-      `2 lines in 1 files on 1 branch; current branch ${BRANCH_ID.slice(0, 8)} at seq 2 (meta.json: 2); no gaps`,
+      `2 lines in 1 file on 1 branch; current branch ${BRANCH_ID.slice(0, 8)} at seq 2 (meta.json: 2); no gaps`,
     );
   });
 

@@ -35,6 +35,10 @@ describe("--doctor's P2 checks", () => {
       farmStats: "pending",
       day: "pending",
       prices: "pass",
+      moneyContext: "pending",
+      workListeners: "pending",
+      finances: "pending",
+      shopOrder: "pending",
       moneyTypes: "pending",
     });
     expect(checks.find((c) => c.id === "pause")?.detail).toBe(
@@ -68,6 +72,66 @@ describe("--doctor's P2 checks", () => {
       "one\n",
     );
     expect(lost.find((c) => c.id === "handle")?.status).toBe("fail");
+  });
+
+  it("reports the money context, the work listeners, the month's finances and a purchase", () => {
+    const checks = ledgerChecks(
+      probe({
+        ...quiet,
+        context: {
+          hooks: {
+            "AIJob.updateCost": "wrapped",
+            "AIJob.stop": "wrapped",
+            "SowingMachine.onEndWorkAreaProcessing": "wrapped",
+          },
+          calls: { wage: 40, sowing: 12 },
+          byMoneyType: {
+            AI: { wage: { calls: 5, total: -130 } },
+            VEHICLE_REPAIR: { none: { calls: 1, total: -1840 } },
+            OTHER: { none: { calls: 2, total: -4 } },
+          },
+          workedHa: { sowing: 1.25 },
+        },
+        finances: {
+          order: ["DAY_CHANGED", "PERIOD_CHANGED"],
+          snapshots: [
+            { message: "DAY_CHANGED", current: -130, historyLength: 0 },
+            { message: "PERIOD_CHANGED", current: 0, historyLength: 1, lastArchived: -130 },
+          ],
+        },
+        shop: {
+          bookings: [{ moneyType: "SHOP_VEHICLE_BUY", frame: 900, vehicles: 7 }],
+          vehicleAdded: [{ frame: 912, vehicles: 8 }],
+        },
+      }),
+      undefined,
+    );
+    const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+    expect(byId.moneyContext).toMatchObject({
+      status: "pass",
+      detail: "AI 5/5 in wage, VEHICLE_REPAIR 0/1 in repair",
+    });
+    expect(byId.workListeners).toMatchObject({
+      status: "pass",
+      detail: "SowingMachine ×12 (1.25 ha)",
+    });
+    expect(byId.finances?.detail).toBe(
+      "order DAY_CHANGED → PERIOD_CHANGED; at the last DAY_CHANGED the month so far was -130 with 0 months archived; PERIOD_CHANGED left 0 and 1 archived (last -130)",
+    );
+    expect(byId.shopOrder?.detail).toBe(
+      "SHOP_VEHICLE_BUY at frame 900 with 7 machines; VEHICLE_ADDED at frame 912 with 8",
+    );
+  });
+
+  it("fails the work listeners when a hook could not be installed", () => {
+    const checks = ledgerChecks(
+      probe({ ...quiet, context: { hooks: { "Sprayer.onEndWorkAreaProcessing": "missing" } } }),
+      undefined,
+    );
+    expect(checks.find((c) => c.id === "workListeners")).toMatchObject({
+      status: "fail",
+      detail: "not hooked: Sprayer.onEndWorkAreaProcessing",
+    });
   });
 
   it("waits for a probe.json that carries the ledger section", () => {

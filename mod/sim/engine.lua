@@ -213,15 +213,41 @@ end
 
 -- Farms and money ---------------------------------------------------------------------------------
 
+-- FinanceStats buckets, one per statistic name. FarmStats keeps the period being played in
+-- `finances` and archives it onto `financesHistory` (oldest first) on PERIOD_CHANGED.
+local FINANCE_STAT_NAMES = {
+    "newVehiclesCost",
+    "soldVehicles",
+    "soldProducts",
+    "purchaseFuel",
+    "purchaseSeeds",
+    "purchaseFertilizer",
+    "vehicleRunningCost",
+    "vehicleLeasingCost",
+    "wagePayment",
+    "other",
+}
+
+local function newFarmStats()
+    local stats = { finances = {}, financesHistory = {} }
+    function stats:archiveFinances()
+        self.financesHistory[#self.financesHistory + 1] = self.finances
+        self.finances = {}
+    end
+    return stats
+end
+
 local Farm = {}
 Farm.__index = Farm
 
 function Farm.new(farmId, balance, name)
-    return setmetatable({ farmId = farmId, money = balance, loan = 0, name = name }, Farm)
+    return setmetatable({ farmId = farmId, money = balance, loan = 0, name = name, stats = newFarmStats() }, Farm)
 end
 
-function Farm:changeBalance(amount, _moneyType)
+function Farm:changeBalance(amount, moneyType)
     self.money = self.money + amount
+    local statistic = type(moneyType) == "table" and moneyType.statistic or "other"
+    self.stats.finances[statistic] = (self.stats.finances[statistic] or 0) + amount
 end
 
 function Farm:getBalance()
@@ -248,6 +274,12 @@ local function newFarmManager()
     spectator.isSpectator = true
     manager:add(Farm.new(1, 100000, "Riverbend Farms"))
     manager:add(Farm.new(14, 0, nil))
+    -- The farms' statistics subscribe when the map loads, before any mod does.
+    g_messageCenter:subscribe(MessageType.PERIOD_CHANGED, function()
+        for _, farm in ipairs(manager.farms) do
+            farm.stats:archiveFinances()
+        end
+    end, manager)
     return manager
 end
 
@@ -294,6 +326,12 @@ end
 
 function Vehicle:getIsAIActive()
     return self.isAI == true
+end
+
+---Wearable:repairVehicle: pays for the repair and clears the damage.
+function Vehicle:repairVehicle(_atSellingPoint)
+    g_currentMission:addMoney(-(self.repairPrice or 1840), self:getOwnerFarmId(), MoneyType.VEHICLE_REPAIR, true, true)
+    self.damage = 0
 end
 
 function Vehicle:getOwnerFarmId()
@@ -407,6 +445,7 @@ end
 function Engine.addVehicle(vehicle)
     local list = g_currentMission.vehicleSystem.vehicles
     list[#list + 1] = vehicle
+    g_messageCenter:publish(MessageType.VEHICLE_ADDED)
     for _, implement in ipairs(vehicle.implements) do
         Engine.addVehicle(implement)
     end
@@ -479,6 +518,9 @@ local function newAISystem()
         g_messageCenter:publish(MessageType.AI_JOB_STARTED, job, startFarmId)
     end
     function system:stopJob(job, aiMessage)
+        if type(job.stop) == "function" then
+            job:stop(aiMessage)
+        end
         for i, active in ipairs(self.activeJobs) do
             if active == job then
                 table.remove(self.activeJobs, i)
@@ -494,6 +536,47 @@ local function newAISystem()
 end
 
 ---A field-work job for a vehicle. jobId may be nil; the AI system assigns one on start.
+-- AIJob as the game has it: wages accrue in updateCost every frame and are booked once they pass
+-- 25, and whatever is left when the job stops (ai/jobs/AIJob.lua). A fresh class per install, since
+-- mods hook the class itself.
+local function newAIJobClass()
+    local AIJobClass = {}
+    AIJobClass.__index = AIJobClass
+
+    function AIJobClass:updateCost(dt)
+        self.pendingCost = (self.pendingCost or 0) + 0.0004 * dt * (self.costScale or 1)
+        if self.pendingCost > 25 then
+            g_currentMission:addMoney(-self.pendingCost, self.startedFarmId, MoneyType.AI, true)
+            self.pendingCost = 0
+        end
+    end
+
+    function AIJobClass:stop(_aiMessage)
+        if (self.pendingCost or 0) > 0 then
+            g_currentMission:addMoney(-self.pendingCost, self.startedFarmId, MoneyType.AI, true)
+            self.pendingCost = 0
+        end
+    end
+    return AIJobClass
+end
+
+-- The work-area specializations that buy inputs for a hired worker. The game dispatches their
+-- onEndWorkAreaProcessing by name at call time (SpecializationUtil.raiseEvent), so a mod can wrap it.
+local function newWorkAreaSpec(specKey, statName, moneyTypeName, settingName)
+    local Spec = {}
+    function Spec.onEndWorkAreaProcessing(self, _dt, _hasProcessed)
+        local params = self[specKey].workAreaParameters
+        if params.lastChangedArea > 0 then
+            local ha = MathUtil.areaToHa(params.lastStatsArea, g_currentMission:getFruitPixelsToSqm())
+            g_farmManager:updateFarmStats(self:getOwnerFarmId(), statName, ha)
+            if self:getIsAIActive() and g_currentMission.missionInfo[settingName] then
+                g_currentMission:addMoney(-(params.inputPrice or 0), self:getOwnerFarmId(), MoneyType[moneyTypeName])
+            end
+        end
+    end
+    return Spec
+end
+
 function Engine.newJob(jobId, vehicle, farmId, opts)
     opts = opts or {}
     local job = {
@@ -512,10 +595,11 @@ function Engine.newJob(jobId, vehicle, farmId, opts)
             end,
         },
     }
+    job.costScale = opts.costScale
     function job:getHelperName()
         return opts.helper or "Alex"
     end
-    return job
+    return setmetatable(job, AIJob)
 end
 
 function Engine.startJob(job)
@@ -612,6 +696,10 @@ local ECONOMY_ORIGINALS = {
 local Mission = {}
 Mission.__index = Mission
 
+function Mission:getFruitPixelsToSqm()
+    return 1
+end
+
 function Mission:getIsServer()
     return self.isServer
 end
@@ -674,6 +762,8 @@ local function newMission(opts)
             savegameName = opts.savegameName or "Riverbend Springs",
             savegameIndex = opts.savegameIndex or 1,
             timeScale = opts.timeScale or 5,
+            helperBuySeeds = opts.helperBuySeeds ~= false,
+            helperBuyFertilizer = opts.helperBuyFertilizer ~= false,
         },
         missionDynamicInfo = { isMultiplayer = opts.isMultiplayer == true },
         environment = {
@@ -839,6 +929,8 @@ function Engine.install(opts)
         PERIOD_CHANGED = 3,
         YEAR_CHANGED = 4,
         VEHICLE_REMOVED = 5,
+        VEHICLE_ADDED = 6,
+        VEHICLE_REPAIRED = 7,
         AI_JOB_STARTED = 101,
         AI_JOB_STOPPED = 102,
         AI_JOB_REMOVED = 103,
@@ -848,8 +940,32 @@ function Engine.install(opts)
         OTHER = { id = 1, title = "finance_other", statistic = "other" },
         AI = { id = 2, title = "finance_wagePayment", statistic = "wagePayment" },
         SOLD_PRODUCTS = { id = 3, title = "finance_soldProducts", statistic = "soldProducts" },
-        SHOP_VEHICLE_SELL = { id = 5, title = "finance_vehicleSale", statistic = "newVehiclesCost" },
+        SHOP_VEHICLE_BUY = { id = 4, title = "finance_newVehiclesCost", statistic = "newVehiclesCost" },
+        SHOP_VEHICLE_SELL = { id = 5, title = "finance_vehicleSale", statistic = "soldVehicles" },
+        VEHICLE_REPAIR = { id = 6, title = "finance_vehicleRunningCost", statistic = "vehicleRunningCost" },
+        PURCHASE_SEEDS = { id = 7, title = "finance_purchaseSeeds", statistic = "purchaseSeeds" },
+        PURCHASE_FERTILIZER = { id = 8, title = "finance_purchaseFertilizer", statistic = "purchaseFertilizer" },
+        LEASING_COSTS = { id = 9, title = "finance_vehicleLeasingCost", statistic = "vehicleLeasingCost" },
     }
+    FinanceStats = { statNames = FINANCE_STAT_NAMES }
+    AIJob = newAIJobClass()
+    SowingMachine = newWorkAreaSpec("spec_sowingMachine", "sownHectares", "PURCHASE_SEEDS", "helperBuySeeds")
+    Sprayer = newWorkAreaSpec("spec_sprayer", "sprayedHectares", "PURCHASE_FERTILIZER", "helperBuyFertilizer")
+    MathUtil = {
+        areaToHa = function(area, pixelsToSqm)
+            return area * pixelsToSqm / 10000
+        end,
+    }
+    -- WearableRepairEvent:run repairs the vehicle, then announces it.
+    WearableRepairEvent = {}
+    WearableRepairEvent.__index = WearableRepairEvent
+    function WearableRepairEvent.new(vehicle, atSellingPoint)
+        return setmetatable({ vehicle = vehicle, atSellingPoint = atSellingPoint }, WearableRepairEvent)
+    end
+    function WearableRepairEvent:run(_connection)
+        self.vehicle:repairVehicle(self.atSellingPoint)
+        g_messageCenter:publish(MessageType.VEHICLE_REPAIRED, self.vehicle, self.atSellingPoint)
+    end
     -- Types registered at map load get an id but no constant name, like the fuel stations' own.
     local nextMoneyTypeId = 100
     MoneyType.register = function(statistic, title)
@@ -957,6 +1073,12 @@ function Engine.run(seconds, dtMs)
         for _, listener in ipairs(Engine.listeners) do
             listener:update(dtMs)
         end
+        -- AISystem:update: every running job's wages accrue.
+        for _, job in ipairs(g_currentMission.aiSystem:getActiveJobs()) do
+            if type(job.updateCost) == "function" then
+                job:updateCost(dtMs)
+            end
+        end
     end
 end
 
@@ -972,6 +1094,37 @@ function Engine.newDay()
     env.currentDay = env.currentDay + 1
     env.currentDayInPeriod = env.currentDayInPeriod % env.daysPerPeriod + 1
     g_messageCenter:publish(MessageType.DAY_CHANGED, env.currentDay)
+    -- The first day of a period starts a new month, and March a new year.
+    if env.currentDayInPeriod == 1 then
+        env.currentPeriod = env.currentPeriod % 12 + 1
+        g_messageCenter:publish(MessageType.PERIOD_CHANGED, env.currentPeriod)
+        if env.currentPeriod == 1 then
+            env.currentYear = env.currentYear + 1
+            g_messageCenter:publish(MessageType.YEAR_CHANGED, env.currentYear)
+        end
+    end
+end
+
+---Repairs a vehicle at the workshop, through WearableRepairEvent as the game does.
+function Engine.repair(vehicle, price)
+    vehicle.repairPrice = price
+    WearableRepairEvent.new(vehicle, false):run({})
+end
+
+---One frame of sowing (or, with the sprayer spec, spraying): the area worked and what a hired
+---worker paid for its seed. Dispatched by name, as SpecializationUtil.raiseEvent does.
+function Engine.workArea(vehicle, spec, sqm, inputPrice)
+    local key = spec == Sprayer and "spec_sprayer" or "spec_sowingMachine"
+    vehicle[key] = {
+        workAreaParameters = { lastChangedArea = sqm, lastStatsArea = sqm, inputPrice = inputPrice },
+    }
+    spec["onEndWorkAreaProcessing"](vehicle, 16, true)
+end
+
+---Buys a vehicle in the shop: the purchase is booked, then the vehicle is added.
+function Engine.buyVehicle(vehicle, price, farmId)
+    g_currentMission:addMoney(-price, farmId or 1, MoneyType.SHOP_VEHICLE_BUY, true)
+    return Engine.addVehicle(vehicle)
 end
 
 ---Sells liters of a fill type at the first selling point, as unloading a trailer does.
