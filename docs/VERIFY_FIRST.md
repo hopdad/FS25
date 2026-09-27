@@ -185,6 +185,24 @@ and the unnamed guided-tour farm (`FarmManager.GUIDED_TOUR_FARM_ID`, 14), so eve
 page would have shown a farm picker with a second, nameless farm. `live_farm.json` now leaves both
 out.
 
+## P2 questions for the same session
+
+The probe's `ledger` section (`mod/FS25_FarmLink/scripts/probe/LedgerProbe.lua`) asks what the
+ledger needs before it is written. The hook targets come from the sources below; the answers come
+from the game.
+
+| Question | How the probe asks | Source of the hook | Result |
+| --- | --- | --- | --- |
+| Does the mod's update run while paused? | Longest real-time gap between updates, and updates seen with `paused` set | – | pending |
+| Can a file handle kept open be written later? (F1 fallback) | Writes, flushes, writes again 5 s later, closes; `--doctor` reads the file | – | pending |
+| Which money types does a session book? | Totals per money type from the P0 `addMoney` wrap | `MoneyType.register` for fuel stations: GDN `FillTrigger` | pending |
+| Where does a sale's context come from? | Registered over `SellingStation.sellFillType(farmId, liters, fillTypeIndex, ...)`, which returns the price | TransactionLog `RmTransactionLog.lua` | pending |
+| How is fuel booked? | Registered over `FillTrigger.fillVehicle(vehicle, delta, dt)`, which books money every frame while filling | GDN `FillTrigger.fillVehicle` | pending |
+| How does field work reach the books? | Wraps `g_farmManager:updateFarmStats(farmId, stat, amount)`, which sowing, spraying, plowing and harvesting all call (`sownHectares`, `sprayedHectares`, `threshedHectares`, ...) | GDN `SowingMachine`, `Sprayer`, `Combine` | pending |
+| What does a new day carry? | `DAY_CHANGED`, `HOUR_CHANGED`, `PERIOD_CHANGED`, `YEAR_CHANGED`, with the calendar at each new day | VDTelemetry `WeatherExporter.lua` | pending |
+| Where do daily prices come from? | `storageSystem:getUnloadingStations()`, selling points' `getEffectiveFillTypePrice(fillTypeIndex)` per liter | InvestorFarm `IFValuation.lua`, VDTelemetry `PricesExporter.lua` | pending |
+| Does `VEHICLE_REMOVED` carry arguments? | Counts it and records the argument count | Handoff, fleet diff | pending |
+
 ## Sources
 
 | Source | Commit |

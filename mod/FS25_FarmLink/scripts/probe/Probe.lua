@@ -1,6 +1,6 @@
 -- P0 probe. Answers the runtime half of the verify-first items (docs/VERIFY_FIRST.md) and writes the
 -- answers to modSettings/FS25_FarmLink/_probe/probe.json: once at mission start, every 10 s, on every
--- save and at mission end.
+-- save and at mission end. LedgerProbe.lua adds the ledger's (P2) questions as the `ledger` section.
 --
 -- It only observes. Every hook calls the game's own function first and returns its results
 -- unchanged, and every probe step runs under pcall. Set ENABLED to false once P0 has passed.
@@ -122,7 +122,12 @@ local function moneyTypeName(moneyType)
             end
         end
     end
-    return moneyTypeNames[moneyType.id] or ("id:" .. tostring(moneyType.id))
+    local known = moneyTypeNames[moneyType.id]
+    if known ~= nil then
+        return known
+    end
+    -- Types made with MoneyType.register at map load (fuel stations use one) have no constant name.
+    return string.format("id:%s %s/%s", tostring(moneyType.id), tostring(moneyType.statistic), tostring(moneyType.title))
 end
 
 -- Static sections, computed once per mission ------------------------------------------------------
@@ -546,11 +551,15 @@ end
 local function recordAddMoney(s, amount, farmId, moneyType)
     local money = s.money
     money.addMoneyCalls = money.addMoneyCalls + 1
+    local name = moneyTypeName(moneyType)
     pushSample(money.samples, {
         amount = describe(amount),
         farmId = describe(farmId),
-        moneyType = moneyTypeName(moneyType),
+        moneyType = name,
     })
+    if FarmLink.LedgerProbe ~= nil then
+        FarmLink.LedgerProbe.recordMoney(name, amount, farmId)
+    end
 end
 
 ---Appended to Farm.changeBalance at file scope. Counts balance changes that did not come through
@@ -820,6 +829,9 @@ function Probe.report(ctx)
                 saves = Json.array(state.saves),
             },
             world = section("world", environmentSection),
+            ledger = section("ledger", function()
+                return FarmLink.LedgerProbe ~= nil and FarmLink.LedgerProbe.report() or nil
+            end) or null(),
         },
     }
 end

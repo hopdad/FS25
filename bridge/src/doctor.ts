@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { FILES, LIVE_PORT, LiveVehicle, ProbeReport } from "@farmlink/schema";
 import { type Environment, type ResolvedRoot, resolveRoot } from "./config";
+import { ledgerChecks } from "./doctorLedger";
 import { collectLive, type LiveReport, liveChecks } from "./doctorLive";
 import { defaultStateDir } from "./state";
 import { BRIDGE_VERSION, runtimeName } from "./version";
@@ -23,7 +24,7 @@ export interface Check {
   status: CheckStatus;
   detail: string;
   /** Checks without a phase belong to P0. */
-  phase?: "P1";
+  phase?: "P1" | "P2";
 }
 
 export interface DoctorReport {
@@ -99,6 +100,14 @@ async function readAppendTest(root: string): Promise<string> {
     return `unexpected content ${JSON.stringify(text)}`;
   } catch {
     return "append_test.txt missing";
+  }
+}
+
+async function readHandleTest(root: string): Promise<string | undefined> {
+  try {
+    return await readFile(join(root, FILES.probeDir, "handle_test.txt"), "utf8");
+  } catch {
+    return undefined;
   }
 }
 
@@ -332,6 +341,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
           },
         ]),
     ...liveChecks(live),
+    ...ledgerChecks(probeData, await readHandleTest(root.root)),
   ];
   return report;
 }
@@ -379,6 +389,10 @@ export function formatDoctor(report: DoctorReport): string {
   section(
     "P1 live page and commands:",
     report.checks.filter((c) => c.phase === "P1"),
+  );
+  section(
+    "P2 questions, answered in the same session:",
+    report.checks.filter((c) => c.phase === "P2"),
   );
   const state = report.live.bridgeState;
   lines.push(

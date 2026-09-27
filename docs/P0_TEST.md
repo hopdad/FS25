@@ -4,7 +4,7 @@ P0 cannot finish without the game. Everything that can run without it is built a
 This session in FS25 checks the three exit criteria and fills in the runtime half of
 [VERIFY_FIRST.md](VERIFY_FIRST.md).
 
-**Time:** about 20 minutes. **Needs:** a Windows PC (or Mac) with FS25 installed and updated.
+**Time:** about 25 minutes. **Needs:** a Windows PC (or Mac) with FS25 installed and updated.
 Multiplayer is not part of P0.
 
 ## What the mod does during the test
@@ -52,13 +52,17 @@ selection. Then:
    should print one line per second with speed, rpm, fuel and your implements. Windows may show a
    SmartScreen warning because the file is unsigned: choose **More info**, then **Run anyway**.
    Leave it running.
-3. **Move some money.** Buy fuel at a gas station, or sell anything at a selling point.
+3. **Move some money.** Buy fuel at a gas station, and sell something at a selling point. Both,
+   if you can: the ledger (P2) books them differently.
 4. **Hire a worker.** Start a helper on a field, let it work for a minute or two, then stop it
    yourself. If you can, also let one run out of fuel or fill its tank; different stop reasons help.
 5. **Harvest (optional).** If you have a combine and a ripe field, harvest for about 30 seconds.
    Without this, item 5 stays at TODO, but the field lookup is still checked.
-6. **Save.** Press Esc and save the game.
-7. **Run the doctor.** Get back into a vehicle, stop the bridge with Ctrl+C and run:
+6. **Field work (optional).** Sow, spray, cultivate or plow for about 30 seconds.
+7. **Pause.** Press Esc, wait 20 seconds, and carry on.
+8. **A new day (optional).** Sleep, or fast-forward until the clock passes midnight.
+9. **Save.** Press Esc and save the game.
+10. **Run the doctor.** Get back into a vehicle, stop the bridge with Ctrl+C and run:
 
    ```sh
    farmlink-bridge.exe --doctor
@@ -84,6 +88,11 @@ selection. Then:
 
 Items 4 to 6 need the actions in step 3. A TODO on them means the action was not seen during the
 session, not that something is broken.
+
+The same session also answers what the ledger (P2) needs to know: whether the mod keeps running
+while the game is paused, how sales, fuel and field work reach the game's books, and what a new day
+looks like. The doctor lists those under "P2 questions"; steps 3 and 6 to 8 feed them, and a TODO
+there again only means the action did not happen.
 
 ## If something goes wrong
 

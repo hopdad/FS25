@@ -238,6 +238,11 @@ local function newFarmManager()
     function manager:getFarmById(farmId)
         return self.byId[farmId]
     end
+    function manager:updateFarmStats(farmId, statName, delta)
+        self.stats[farmId] = self.stats[farmId] or {}
+        self.stats[farmId][statName] = (self.stats[farmId][statName] or 0) + delta
+    end
+    manager.stats = {}
     -- Like the game, the list starts with the spectator farm and holds the unnamed guided-tour farm.
     local spectator = manager:add(Farm.new(0, 0, "Spectator"))
     spectator.isSpectator = true
@@ -521,6 +526,87 @@ function Engine.stopJob(job, message)
     g_currentMission.aiSystem:stopJob(job, message)
 end
 
+-- Economy -----------------------------------------------------------------------------------------
+
+-- A selling point: sellFillType credits the sale through addMoney and returns the price, as in the
+-- game (TransactionLog's notes on SellingStation.sellFillType).
+SellingStation = {}
+SellingStation.__index = SellingStation
+
+function SellingStation.new(uniqueId, name, pricesPerLiter)
+    local accepted = {}
+    for fillType in pairs(pricesPerLiter) do
+        accepted[FILL_TYPE_INDEX[fillType]] = true
+    end
+    return setmetatable({
+        isSellingPoint = true,
+        acceptedFillTypes = accepted,
+        pricesPerLiter = pricesPerLiter,
+        name = name,
+        owningPlaceable = {
+            getUniqueId = function()
+                return uniqueId
+            end,
+        },
+    }, SellingStation)
+end
+
+function SellingStation:getName()
+    return self.name
+end
+
+function SellingStation:getEffectiveFillTypePrice(fillTypeIndex)
+    for name, price in pairs(self.pricesPerLiter) do
+        if FILL_TYPE_INDEX[name] == fillTypeIndex then
+            return price
+        end
+    end
+    return 0
+end
+
+function SellingStation:sellFillType(farmId, fillDelta, fillTypeIndex, _toolType, _extraAttributes)
+    local price = fillDelta * self:getEffectiveFillTypePrice(fillTypeIndex)
+    g_currentMission:addMoney(price, farmId, MoneyType.SOLD_PRODUCTS, true)
+    return price
+end
+
+-- A fuel station: fillVehicle books fuel through addMoney on every call, which the game makes once a
+-- frame while the vehicle fills up.
+FillTrigger = {}
+FillTrigger.__index = FillTrigger
+
+function FillTrigger.new(pricePerLiter)
+    return setmetatable({ pricePerLiter = pricePerLiter, moneyChangeType = MoneyType.register("other", "finance_purchaseFuel") }, FillTrigger)
+end
+
+function FillTrigger:getCurrentFillType()
+    return FILL_TYPE_INDEX.DIESEL
+end
+
+function FillTrigger:fillVehicle(vehicle, delta, _dt)
+    local farmId = 1
+    local spec = vehicle.spec_motorized
+    local consumer = spec ~= nil and spec.consumersByFillType[FILL_TYPE_INDEX.DIESEL] or nil
+    local unit = consumer ~= nil and vehicle.spec_fillUnit.fillUnits[consumer.fillUnitIndex] or nil
+    if unit == nil then
+        return 0
+    end
+    delta = math.min(delta, unit.capacity - unit.fillLevel)
+    if delta <= 0 then
+        return 0
+    end
+    unit.fillLevel = unit.fillLevel + delta
+    g_farmManager:updateFarmStats(farmId, "expenses", delta * self.pricePerLiter)
+    g_currentMission:addMoney(-delta * self.pricePerLiter, farmId, self.moneyChangeType, true)
+    return delta
+end
+
+-- Every install starts from these, as a fresh game process would, whatever an earlier mod load hooked.
+local ECONOMY_ORIGINALS = {
+    sellFillType = SellingStation.sellFillType,
+    fillVehicle = FillTrigger.fillVehicle,
+}
+
 -- Mission -----------------------------------------------------------------------------------------
 
 local Mission = {}
@@ -625,6 +711,15 @@ local function newMission(opts)
                 return {}
             end,
         },
+        storageSystem = {
+            stations = {
+                SellingStation.new("placeable21", "Grain Elevator", { WHEAT = 0.42, BARLEY = 0.38 }),
+                { isSellingPoint = false, acceptedFillTypes = {} },
+            },
+            getUnloadingStations = function(self)
+                return self.stations
+            end,
+        },
         aiSystem = newAISystem(),
         aiMessageManager = newAIMessageManager(),
         aiJobTypeManager = {
@@ -704,8 +799,9 @@ function Engine.install(opts)
     getDate = function(format)
         return os.date(format)
     end
+    Engine.skippedSec = 0
     getTimeSec = function()
-        return os.clock()
+        return os.clock() + Engine.skippedSec
     end
     getTime = function()
         return os.time() * 1000
@@ -728,6 +824,8 @@ function Engine.install(opts)
         HOUR_CHANGED = 1,
         DAY_CHANGED = 2,
         PERIOD_CHANGED = 3,
+        YEAR_CHANGED = 4,
+        VEHICLE_REMOVED = 5,
         AI_JOB_STARTED = 101,
         AI_JOB_STOPPED = 102,
         AI_JOB_REMOVED = 103,
@@ -737,10 +835,17 @@ function Engine.install(opts)
         OTHER = { id = 1, title = "finance_other", statistic = "other" },
         AI = { id = 2, title = "finance_wagePayment", statistic = "wagePayment" },
         SOLD_PRODUCTS = { id = 3, title = "finance_soldProducts", statistic = "soldProducts" },
-        PURCHASE_FUEL = { id = 4, title = "finance_purchaseFuel", statistic = "purchaseFuel" },
-        register = function() end,
+        SHOP_VEHICLE_SELL = { id = 5, title = "finance_vehicleSale", statistic = "newVehiclesCost" },
     }
+    -- Types registered at map load get an id but no constant name, like the fuel stations' own.
+    local nextMoneyTypeId = 100
+    MoneyType.register = function(statistic, title)
+        nextMoneyTypeId = nextMoneyTypeId + 1
+        return { id = nextMoneyTypeId, statistic = statistic, title = title }
+    end
     _G.Farm = Farm
+    SellingStation.sellFillType = ECONOMY_ORIGINALS.sellFillType
+    FillTrigger.fillVehicle = ECONOMY_ORIGINALS.fillVehicle
     g_farmManager = nil
     AIMessageSuccessStoppedByUser = Engine.AIMessages.SUCCESS_STOPPED_BY_USER
     FSCareerMissionInfo = {
@@ -839,6 +944,35 @@ function Engine.run(seconds, dtMs)
         for _, listener in ipairs(Engine.listeners) do
             listener:update(dtMs)
         end
+    end
+end
+
+---Simulates the game pausing for this many real seconds without calling any update.
+function Engine.pause(seconds)
+    Engine.skippedSec = Engine.skippedSec + seconds
+end
+
+---Starts the next in-game day, as the environment does at midnight.
+function Engine.newDay()
+    local env = g_currentMission.environment
+    env.currentMonotonicDay = env.currentMonotonicDay + 1
+    env.currentDay = env.currentDay + 1
+    env.currentDayInPeriod = env.currentDayInPeriod % env.daysPerPeriod + 1
+    g_messageCenter:publish(MessageType.DAY_CHANGED, env.currentDay)
+end
+
+---Sells liters of a fill type at the first selling point, as unloading a trailer does.
+function Engine.sell(farmId, fillType, liters)
+    local station = g_currentMission.storageSystem.stations[1]
+    return station:sellFillType(farmId, liters, FILL_TYPE_INDEX[fillType], nil, nil)
+end
+
+---Refuels a vehicle for the given real seconds at a fuel station, one fillVehicle call per frame.
+function Engine.refuel(vehicle, seconds, dtMs)
+    dtMs = dtMs or 16
+    local trigger = FillTrigger.new(1.4)
+    for _ = 1, math.floor(seconds * 1000 / dtMs) do
+        trigger:fillVehicle(vehicle, 0.1 * dtMs, dtMs)
     end
 end
 

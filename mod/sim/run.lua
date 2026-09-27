@@ -4,7 +4,8 @@
 --   lua5.1 sim/run.lua <profileDir> [seconds] --resume <savegameDirectory>
 --
 -- The first form simulates a fresh single-player session: a tractor with a seeder, a worker that runs
--- out of fuel, a combine worker still harvesting, a wage payment, a harvest tick and a career save.
+-- out of fuel, a combine worker still harvesting, a wage payment, a harvest tick, a grain sale, a
+-- refuel, a pause, a new day and a career save.
 -- --resume loads that savegame again (same saveId), hires a worker that gets job id 1 and runs, so a
 -- test can drop a commands.xml into the save folder beforehand. Both print a JSON summary.
 
@@ -72,6 +73,15 @@ if resumeDirectory == nil then
     combineType.overwritten.addCutterArea(tractor, Combine.addCutterArea, 5, 1200, 1, FillType.WHEAT, 1, 1, 1)
     Engine.stopJob(job, Engine.AIMessages.ERROR_OUT_OF_FUEL.new())
     Engine.startJob(Engine.newJob(nil, combine, 1, { helper = "Alex" }))
+
+    -- What the ledger (P2) will book, for the probe's ledger section: a sale, a refuel, a sowing stat,
+    -- a pause, a new day and a sold vehicle.
+    Engine.sell(1, "WHEAT", 12000)
+    Engine.refuel(tractor, 0.5)
+    g_farmManager:updateFarmStats(1, "sownHectares", 1.25)
+    Engine.pause(20)
+    Engine.newDay()
+    g_messageCenter:publish(MessageType.VEHICLE_REMOVED)
 
     Engine.run(seconds / 2)
 else

@@ -146,8 +146,19 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       commands: "pending",
       heartbeat: "pending",
       server: "pending",
+      pause: "pass",
+      handle: "pass",
+      sales: "pass",
+      fuel: "pass",
+      farmStats: "pass",
+      day: "pass",
+      prices: "pass",
+      moneyTypes: "pass",
     });
     expect(report.live.fleet.stops).toMatchObject([{ helper: "Sam", reason: "ERROR_OUT_OF_FUEL" }]);
+    expect(report.checks.find((c) => c.id === "pause")?.detail).toBe(
+      "no: updates stopped for 20 s, so a pause looks like the game going offline",
+    );
   });
 });
 

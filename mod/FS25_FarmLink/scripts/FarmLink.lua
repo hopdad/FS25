@@ -32,6 +32,7 @@ local SOURCES = {
     "scripts/commands/handlers/Ping.lua",
     "scripts/commands/handlers/WorkerStop.lua",
     "scripts/probe/Probe.lua",
+    "scripts/probe/LedgerProbe.lua",
 }
 
 for _, file in ipairs(SOURCES) do
@@ -50,6 +51,8 @@ if FarmLink.registry == nil then
     FarmLink.registry:add(FarmLink.FarmCollector)
     FarmLink.registry:add(FarmLink.CommandChannel)
     if FarmLink.Probe.ENABLED then
+        -- The ledger probe first, so the P0 probe's first write already carries its section.
+        FarmLink.registry:add(FarmLink.LedgerProbe)
         FarmLink.registry:add(FarmLink.Probe)
     end
 end
@@ -232,9 +235,11 @@ function FarmLink.installProcessHooks()
     end
 
     if FarmLink.Probe.ENABLED then
-        local ok, err = pcall(FarmLink.Probe.installProcessHooks)
-        if not ok then
-            Log.error("probe hooks failed: %s", tostring(err))
+        for _, probe in ipairs({ FarmLink.Probe, FarmLink.LedgerProbe }) do
+            local ok, err = pcall(probe.installProcessHooks)
+            if not ok then
+                Log.error("%s hooks failed: %s", probe.name, tostring(err))
+            end
         end
     end
 end
