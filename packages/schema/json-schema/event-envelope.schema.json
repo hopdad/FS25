@@ -34,6 +34,11 @@
           "minimum": 0,
           "maximum": 1439
         },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
         "realTs": {
           "type": "string",
           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d))|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$"
@@ -197,6 +202,75 @@
                   "properties": {
                     "kind": {
                       "type": "string",
+                      "const": "input"
+                    },
+                    "fillType": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "liters": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "fieldId": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "vehicleId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "fillType",
+                    "liters",
+                    "fieldId",
+                    "vehicleId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "vehicle"
+                    },
+                    "vehicleId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "vehicleId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
                       "const": "none"
                     }
                   },
@@ -228,6 +302,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -267,6 +342,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -335,6 +415,17 @@
             },
             "isAI": {
               "type": "boolean"
+            },
+            "workedHours": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -355,6 +446,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -394,6 +486,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -490,6 +587,17 @@
             },
             "isAI": {
               "type": "boolean"
+            },
+            "workedHours": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -512,6 +620,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -551,6 +660,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -597,6 +711,10 @@
             },
             "leased": {
               "type": "boolean"
+            },
+            "operatingHours": {
+              "type": "number",
+              "minimum": 0
             }
           },
           "required": [
@@ -616,6 +734,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -655,6 +774,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -722,6 +846,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -761,6 +886,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -797,6 +927,10 @@
             "operatingHours": {
               "type": "number",
               "minimum": 0
+            },
+            "sellValue": {
+              "type": "number",
+              "minimum": 0
             }
           },
           "required": [
@@ -813,6 +947,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -852,6 +987,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -923,6 +1063,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -962,6 +1103,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -1030,6 +1176,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -1069,6 +1216,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -1138,6 +1290,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -1177,6 +1330,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -1221,11 +1379,6 @@
                 "type": "number"
               }
             },
-            "year": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
-            },
             "period": {
               "type": "integer",
               "minimum": 1,
@@ -1246,7 +1399,6 @@
             "balance",
             "loan",
             "financeByCategory",
-            "year",
             "period",
             "dayInPeriod",
             "daysPerPeriod"
@@ -1261,6 +1413,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",
@@ -1300,6 +1453,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1439
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "realTs": {
           "type": "string",
@@ -1342,6 +1500,21 @@
                 "type": "string"
               }
             },
+            "period": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "dayInPeriod": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "daysPerPeriod": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
             "parentBranchId": {
               "anyOf": [
                 {
@@ -1370,7 +1543,10 @@
           "required": [
             "modVersion",
             "gameVersion",
-            "integrations"
+            "integrations",
+            "period",
+            "dayInPeriod",
+            "daysPerPeriod"
           ],
           "additionalProperties": false
         }
@@ -1382,6 +1558,7 @@
         "seq",
         "day",
         "minute",
+        "year",
         "realTs",
         "farmId",
         "userId",

@@ -1,0 +1,84 @@
+{
+  "description": "One farm over two game years (1 day per month): three machines bought or leased and one it already had, seeding, fertilizing and a harvest on field 3, tillage and a barley harvest on field 5, a potato harvest nobody priced on field 6, and job id 1 reused in the second year on field 4. Pins field_season_pnl, vehicle_cost_per_hour and prices.",
+  "defaults": {
+    "v": 1,
+    "saveId": "5b8f3c2a-1d4e-4f6a-9b7c-2e1d0f9a8b7c",
+    "branchId": "0c7e5a9d-3b2f-4e1a-8d6c-9f0e1a2b3c4d",
+    "farmId": 1,
+    "year": 1,
+    "userId": null,
+    "realTs": "2026-09-27T10:00:00Z"
+  },
+  "events": [
+    { "seq": 1, "day": 10, "minute": 360, "type": "session", "data": { "modVersion": "0.3.0.0", "gameVersion": "1.10.1.0", "integrations": [], "period": 1, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 2, "day": 10, "minute": 361, "type": "vehicle_hours", "data": { "vehicleId": "tractor0", "operatingHours": 120, "sellValue": 40000 } },
+    { "seq": 3, "day": 10, "minute": 400, "type": "money", "data": { "amount": -150000, "moneyType": "SHOP_VEHICLE_BUY", "context": { "kind": "shop", "storeItem": "data/vehicles/fendt/fendt700Vario/fendt700Vario.xml", "vehicleId": "tractor1" } } },
+    { "seq": 4, "day": 10, "minute": 400, "type": "vehicle_added", "data": { "vehicleId": "tractor1", "storeItem": "data/vehicles/fendt/fendt700Vario/fendt700Vario.xml", "name": "Fendt 700 Vario", "price": 150000, "leased": false } },
+    { "seq": 5, "day": 10, "minute": 410, "type": "money", "data": { "amount": -280000, "moneyType": "SHOP_VEHICLE_BUY", "context": { "kind": "shop", "storeItem": "data/vehicles/claas/lexion8000/lexion8000.xml", "vehicleId": "combine1" } } },
+    { "seq": 6, "day": 10, "minute": 410, "type": "vehicle_added", "data": { "vehicleId": "combine1", "storeItem": "data/vehicles/claas/lexion8000/lexion8000.xml", "name": "CLAAS LEXION 8900", "price": 280000, "leased": false, "operatingHours": 400 } },
+    { "seq": 7, "day": 10, "minute": 420, "type": "money", "data": { "amount": -2400, "moneyType": "LEASING_COSTS", "context": { "kind": "shop", "storeItem": "data/vehicles/amazone/pantera4504/pantera4504.xml", "vehicleId": "sprayer1" } } },
+    { "seq": 8, "day": 10, "minute": 420, "type": "vehicle_added", "data": { "vehicleId": "sprayer1", "storeItem": "data/vehicles/amazone/pantera4504/pantera4504.xml", "name": "Amazone Pantera 4504", "price": 120000, "leased": true } },
+    { "seq": 9, "day": 10, "minute": 480, "type": "worker_start", "data": { "jobId": "1", "vehicleId": "tractor1", "jobType": "FIELDWORK", "fieldId": 3 } },
+    { "seq": 10, "day": 10, "minute": 540, "type": "money", "data": { "amount": -800, "moneyType": "PURCHASE_SEEDS", "context": { "kind": "input", "fillType": "SEEDS", "liters": 400, "fieldId": 3, "vehicleId": "tractor1" } } },
+    { "seq": 11, "day": 10, "minute": 600, "type": "field_work", "data": { "fieldId": 3, "farmlandId": 3, "workType": "seeding", "areaHa": 4, "inputFillType": "SEEDS", "inputLiters": 400, "vehicleId": "tractor1", "isAI": true, "workedHours": 2 } },
+    { "seq": 12, "day": 10, "minute": 600, "type": "money", "data": { "amount": -250, "moneyType": "AI", "count": 12, "context": { "kind": "wage", "jobId": "1", "vehicleId": "tractor1" } } },
+    { "seq": 13, "day": 10, "minute": 600, "type": "worker_stop", "data": { "jobId": "1", "vehicleId": "tractor1", "reason": "SUCCESS_FINISHED_JOB", "durationMin": 120, "wagesTotal": 250 } },
+    { "seq": 14, "day": 10, "minute": 620, "type": "money", "data": { "amount": -500, "moneyType": "PURCHASE_FUEL", "count": 25, "context": { "kind": "fuel", "vehicleId": "tractor1", "fillType": "DIESEL", "liters": 400 } } },
+    { "seq": 15, "day": 10, "minute": 700, "userId": "4f1e2d3c", "type": "field_work", "data": { "fieldId": 5, "farmlandId": 5, "workType": "tillage", "areaHa": 2.5, "inputFillType": null, "inputLiters": null, "vehicleId": "tractor0", "isAI": false, "workedHours": 1.5 } },
+    { "seq": 16, "day": 10, "minute": 710, "userId": "4f1e2d3c", "type": "money", "data": { "amount": -150, "moneyType": "VEHICLE_REPAIR", "context": { "kind": "vehicle", "vehicleId": "tractor0" } } },
+    { "seq": 17, "day": 10, "minute": 720, "type": "vehicle_hours", "data": { "vehicleId": "tractor0", "operatingHours": 121.5, "sellValue": 39800 } },
+    { "seq": 18, "day": 11, "minute": 0, "type": "day_rollover", "data": { "balance": 566800, "loan": 0, "financeByCategory": {}, "period": 2, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 19, "day": 11, "minute": 0, "type": "prices", "data": { "entries": [ { "stationId": "elevator", "fillType": "WHEAT", "pricePer1000L": 400 }, { "stationId": "mill", "fillType": "WHEAT", "pricePer1000L": 440 }, { "stationId": "elevator", "fillType": "BARLEY", "pricePer1000L": 380 } ] } },
+    { "seq": 20, "day": 12, "minute": 0, "type": "day_rollover", "data": { "balance": 566800, "loan": 0, "financeByCategory": {}, "period": 3, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 21, "day": 12, "minute": 0, "type": "prices", "data": { "entries": [ { "stationId": "elevator", "fillType": "WHEAT", "pricePer1000L": 420 }, { "stationId": "mill", "fillType": "WHEAT", "pricePer1000L": 460 }, { "stationId": "elevator", "fillType": "BARLEY", "pricePer1000L": 390 } ] } },
+    { "seq": 22, "day": 15, "minute": 480, "type": "worker_start", "data": { "jobId": "2", "vehicleId": "sprayer1", "jobType": "FIELDWORK", "fieldId": 3 } },
+    { "seq": 23, "day": 15, "minute": 520, "type": "money", "data": { "amount": -1200, "moneyType": "PURCHASE_FERTILIZER", "context": { "kind": "input", "fillType": "LIQUIDFERTILIZER", "liters": 3000, "fieldId": 3, "vehicleId": "sprayer1" } } },
+    { "seq": 24, "day": 15, "minute": 540, "type": "field_work", "data": { "fieldId": 3, "farmlandId": 3, "workType": "fertilizing", "areaHa": 4, "inputFillType": "LIQUIDFERTILIZER", "inputLiters": 3000, "vehicleId": "sprayer1", "isAI": true, "workedHours": 1 } },
+    { "seq": 25, "day": 15, "minute": 540, "type": "money", "data": { "amount": -100, "moneyType": "AI", "context": { "kind": "wage", "jobId": "2", "vehicleId": "sprayer1" } } },
+    { "seq": 26, "day": 15, "minute": 540, "type": "worker_stop", "data": { "jobId": "2", "vehicleId": "sprayer1", "reason": "SUCCESS_FINISHED_JOB", "durationMin": 60, "wagesTotal": 100 } },
+    { "seq": 27, "day": 15, "minute": 600, "type": "money", "data": { "amount": -300, "moneyType": "LEASING_COSTS", "context": { "kind": "vehicle", "vehicleId": "sprayer1" } } },
+    { "seq": 28, "day": 15, "minute": 700, "type": "vehicle_hours", "data": { "vehicleId": "sprayer1", "operatingHours": 10 } },
+    { "seq": 29, "day": 18, "minute": 600, "userId": "4f1e2d3c", "type": "harvest", "data": { "fieldId": 3, "farmlandId": 3, "fillType": "WHEAT", "liters": 30000, "vehicleId": "combine1", "isAI": false, "workedHours": 3 } },
+    { "seq": 30, "day": 18, "minute": 700, "userId": "4f1e2d3c", "type": "harvest", "data": { "fieldId": 5, "farmlandId": 5, "fillType": "BARLEY", "liters": 12000, "vehicleId": "combine1", "isAI": false, "workedHours": 1 } },
+    { "seq": 31, "day": 18, "minute": 720, "type": "vehicle_hours", "data": { "vehicleId": "combine1", "operatingHours": 450, "sellValue": 255000 } },
+    { "seq": 32, "day": 19, "minute": 600, "userId": "4f1e2d3c", "type": "money", "data": { "amount": 9000, "moneyType": "SOLD_PRODUCTS", "context": { "kind": "sale", "stationId": "elevator", "fillType": "WHEAT", "liters": 20000 } } },
+    { "seq": 33, "day": 19, "minute": 630, "userId": "4f1e2d3c", "type": "money", "data": { "amount": 4800, "moneyType": "SOLD_PRODUCTS", "context": { "kind": "sale", "stationId": "mill", "fillType": "WHEAT", "liters": 10000 } } },
+    { "seq": 34, "year": 2, "day": 22, "minute": 0, "type": "day_rollover", "data": { "balance": 579000, "loan": 0, "financeByCategory": {}, "period": 1, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 35, "year": 2, "day": 23, "minute": 480, "type": "worker_start", "data": { "jobId": "1", "vehicleId": "tractor1", "jobType": "FIELDWORK", "fieldId": 4 } },
+    { "seq": 36, "year": 2, "day": 23, "minute": 500, "type": "money", "data": { "amount": -500, "moneyType": "PURCHASE_SEEDS", "context": { "kind": "input", "fillType": "SEEDS", "liters": 250, "fieldId": 4, "vehicleId": "tractor1" } } },
+    { "seq": 37, "year": 2, "day": 23, "minute": 540, "type": "field_work", "data": { "fieldId": 4, "farmlandId": 4, "workType": "seeding", "areaHa": 3, "inputFillType": "SEEDS", "inputLiters": 250, "vehicleId": "tractor1", "isAI": true, "workedHours": 1 } },
+    { "seq": 38, "year": 2, "day": 23, "minute": 540, "type": "money", "data": { "amount": -120, "moneyType": "AI", "context": { "kind": "wage", "jobId": "1", "vehicleId": "tractor1" } } },
+    { "seq": 39, "year": 2, "day": 23, "minute": 540, "type": "worker_stop", "data": { "jobId": "1", "vehicleId": "tractor1", "reason": "ERROR_OUT_OF_FUEL", "durationMin": 60, "wagesTotal": 120 } },
+    { "seq": 40, "year": 2, "day": 23, "minute": 600, "type": "vehicle_hours", "data": { "vehicleId": "tractor1", "operatingHours": 50, "sellValue": 135000 } },
+    { "seq": 41, "year": 2, "day": 24, "minute": 600, "userId": "4f1e2d3c", "type": "harvest", "data": { "fieldId": 6, "farmlandId": 6, "fillType": "POTATO", "liters": 8000, "vehicleId": "harvester9", "isAI": false, "workedHours": 2 } }
+  ],
+  "snapshots": [
+    { "day": 22, "payload": { "farms": [], "weather": { "current": null, "forecast": [] }, "fields": [ { "fieldId": 3, "farmlandId": 3, "areaHa": 4.2, "ownerFarmId": 1 }, { "fieldId": 4, "farmlandId": 4, "areaHa": 3.1, "ownerFarmId": 1 }, { "fieldId": 5, "farmlandId": 5, "areaHa": 2.6, "ownerFarmId": 1 }, { "fieldId": 7, "farmlandId": 7, "areaHa": 9.8, "ownerFarmId": 0 } ] } }
+  ],
+  "expect": {
+    "vehicle_cost_per_hour": [
+      { "vehicle_id": "tractor0", "farm_id": 1, "capital_known": false, "capital_cost": null, "fuel": 0, "wages": 0, "upkeep": 150, "hours": 1.5, "cost_per_hour": 100, "machine_cost_per_hour": 100 },
+      { "vehicle_id": "tractor1", "farm_id": 1, "capital_known": true, "purchase_paid": 150000, "sell_value": 135000, "capital_cost": 15000, "fuel": 500, "wages": 370, "upkeep": 0, "hours": 50, "cost_per_hour": 317.4, "machine_cost_per_hour": 310 },
+      { "vehicle_id": "combine1", "farm_id": 1, "capital_known": true, "purchase_paid": 280000, "sell_value": 255000, "capital_cost": 25000, "fuel": 0, "wages": 0, "upkeep": 0, "hours": 50, "cost_per_hour": 500, "machine_cost_per_hour": 500 },
+      { "vehicle_id": "sprayer1", "farm_id": 1, "leased": true, "capital_known": true, "purchase_paid": 2400, "capital_cost": 2400, "fuel": 0, "wages": 100, "upkeep": 300, "hours": 10, "cost_per_hour": 280, "machine_cost_per_hour": 270 }
+    ],
+    "field_season_pnl": [
+      { "season": 1, "field_id": 3, "farm_id": 1, "area_ha": 4.2, "fill_type": "WHEAT", "yields": [ { "fillType": "WHEAT", "liters": 30000, "pricePerLiter": 0.46, "priceBasis": "sales", "revenue": 13800 } ], "revenue": 13800, "revenue_incomplete": false, "input_costs": 2000, "machine_hours": 6, "machine_costs": 2390, "wages": 350, "costs": 4740, "net": 9060, "net_per_ha": 2157.142857142857 },
+      { "season": 1, "field_id": 5, "farm_id": 1, "area_ha": 2.6, "fill_type": "BARLEY", "yields": [ { "fillType": "BARLEY", "liters": 12000, "pricePerLiter": 0.385, "priceBasis": "market", "revenue": 4620 } ], "revenue": 4620, "revenue_incomplete": false, "input_costs": 0, "machine_hours": 2.5, "machine_costs": 650, "wages": 0, "costs": 650, "net": 3970, "net_per_ha": 1526.923076923077 },
+      { "season": 2, "field_id": 4, "farm_id": 1, "area_ha": 3.1, "fill_type": null, "yields": [], "revenue": 0, "revenue_incomplete": false, "input_costs": 500, "machine_hours": 1, "machine_costs": 310, "wages": 120, "costs": 930, "net": -930, "net_per_ha": -300 },
+      { "season": 2, "field_id": 6, "farm_id": 1, "area_ha": null, "fill_type": "POTATO", "yields": [ { "fillType": "POTATO", "liters": 8000, "pricePerLiter": null, "priceBasis": null, "revenue": null } ], "revenue": 0, "revenue_incomplete": true, "input_costs": 0, "machine_hours": 2, "machine_costs": 0, "wages": 0, "costs": 0, "net": 0, "net_per_ha": null }
+    ],
+    "money_reconciliation": [
+      { "farm_id": 1, "from_day": 11, "to_day": 12, "balance_change": 0, "money_total": 0, "difference": 0 },
+      { "farm_id": 1, "from_day": 12, "to_day": 22, "balance_change": 12200, "money_total": 12200, "difference": 0 }
+    ],
+    "prices": [
+      { "day": 11, "station_id": "elevator", "fill_type": "BARLEY", "year": 1, "price_per_1000l": 380 },
+      { "day": 11, "station_id": "elevator", "fill_type": "WHEAT", "year": 1, "price_per_1000l": 400 },
+      { "day": 11, "station_id": "mill", "fill_type": "WHEAT", "year": 1, "price_per_1000l": 440 },
+      { "day": 12, "station_id": "elevator", "fill_type": "BARLEY", "year": 1, "price_per_1000l": 390 },
+      { "day": 12, "station_id": "elevator", "fill_type": "WHEAT", "year": 1, "price_per_1000l": 420 },
+      { "day": 12, "station_id": "mill", "fill_type": "WHEAT", "year": 1, "price_per_1000l": 460 }
+    ]
+  }
+}

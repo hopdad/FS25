@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./reasons": "./src/reasons.ts"
+    "./reasons": "./src/reasons.ts",
+    "./fixtures": "./fixtures/ledger.ts"
   },
   "scripts": {
     "test": "vitest run",

@@ -12,7 +12,7 @@ multiplayer-first: only the server writes the ledger.
 
 ## Status
 
-Both phases so far are built and tested outside the game, and wait on an in-game run.
+P0 and P1 are built and tested outside the game, and wait on an in-game run. P2 has started.
 
 **P0 (spike).** The mod loads, resolves its modSettings folder, keeps a saveId in the savegame and
 writes `live_vehicle.json` every second. The bridge finds and validates those files, and a probe
@@ -24,6 +24,14 @@ farm (money, silos, weather), and stops a worker when the bridge asks. The bridg
 page on the LAN behind a pairing token, with gauges, a worker board with Stop buttons, the fleet,
 the farm and alerts. [docs/P1_TEST.md](docs/P1_TEST.md) is the 30-minute script that closes it.
 
+**P2 (ledger), started.** The Supabase schema is written and tested on Postgres:
+- row-level security for owners, members and viewers;
+- the branch rule, so a reloaded older save never double-counts;
+- the analytics views: field P&L, machine cost per hour, worker downtime and money reconciliation.
+
+Golden fixtures pin each formula. The mod's event log and the bridge's sync come next;
+[docs/LEDGER.md](docs/LEDGER.md) describes the ledger.
+
 | Document | What it is |
 | --- | --- |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | The product and technical spec, as handed off |
@@ -31,6 +39,7 @@ the farm and alerts. [docs/P1_TEST.md](docs/P1_TEST.md) is the 30-minute script 
 | [docs/VERIFY_FIRST.md](docs/VERIFY_FIRST.md) | FS25 API answers from real game code, with sources |
 | [docs/P0_TEST.md](docs/P0_TEST.md) | The in-game test that closes P0 |
 | [docs/P1_TEST.md](docs/P1_TEST.md) | The in-game test that closes P1 |
+| [docs/LEDGER.md](docs/LEDGER.md) | The ledger (P2): which events count, the analytics formulas, access |
 
 ## How it fits together
 
@@ -58,13 +67,14 @@ against the exported JSON Schema.
 | `bridge/` | Node + TypeScript bridge, compiled to one executable with Bun | P0 |
 | `packages/schema/` | Zod contracts for every file, and their JSON Schema in `json-schema/` | P0 |
 | `packages/live-ui/` | The live views, shared by the phone page and (later) the web app | P1 |
-| `supabase/` | Migrations, row-level security, analytics views | P2 |
+| `supabase/` | Migrations, row-level security, analytics views, and their tests on Postgres | P2 |
 | `web/` | Next.js web app | P4 |
 
 ## Development
 
 You need Node 22+ and pnpm 10. Lua work needs Lua 5.1 with busted. Building the bridge executable
-needs Bun.
+needs Bun. The SQL tests need Postgres 15 or later: a `DATABASE_URL`, or its binaries installed so
+they can start a throwaway cluster.
 
 ```sh
 pnpm install

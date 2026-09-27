@@ -1,0 +1,48 @@
+{
+  "description": "Hired workers on two farms across a year change: machines that ran out of fuel and were restarted, a blocked worker left standing, jobs the player stopped, finished jobs, and a stop with no known reason. Pins worker_downtime.",
+  "defaults": {
+    "v": 1,
+    "saveId": "8d2e4f6a-0b1c-4d3e-a5f7-6a8b9c0d1e2f",
+    "branchId": "3e5f7a9b-1c2d-4e6f-b8a0-7b9c0d1e2f3a",
+    "farmId": 1,
+    "year": 1,
+    "userId": null,
+    "realTs": "2026-09-27T12:00:00Z"
+  },
+  "events": [
+    { "seq": 1, "day": 5, "minute": 300, "type": "session", "data": { "modVersion": "0.3.0.0", "gameVersion": "1.10.1.0", "integrations": [], "period": 10, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 2, "day": 5, "minute": 300, "farmId": 2, "type": "worker_start", "data": { "jobId": "8", "vehicleId": "f2tractor", "jobType": "FIELDWORK", "fieldId": 9 } },
+    { "seq": 3, "day": 5, "minute": 400, "farmId": 2, "type": "worker_stop", "data": { "jobId": "8", "vehicleId": "f2tractor", "reason": "ERROR_OUT_OF_FUEL", "durationMin": 100, "wagesTotal": 20 } },
+    { "seq": 4, "day": 5, "minute": 480, "type": "worker_start", "data": { "jobId": "1", "vehicleId": "tractor1", "jobType": "FIELDWORK", "fieldId": 1 } },
+    { "seq": 5, "day": 5, "minute": 500, "type": "worker_start", "data": { "jobId": "3", "vehicleId": "tractor2", "jobType": "FIELDWORK", "fieldId": 2 } },
+    { "seq": 6, "day": 5, "minute": 540, "type": "worker_stop", "data": { "jobId": "1", "vehicleId": "tractor1", "reason": "ERROR_OUT_OF_FUEL", "durationMin": 60, "wagesTotal": 40 } },
+    { "seq": 7, "day": 5, "minute": 560, "type": "worker_stop", "data": { "jobId": "3", "vehicleId": "tractor2", "reason": "ERROR_BLOCKED_BY_OBJECT", "durationMin": 60, "wagesTotal": 45 } },
+    { "seq": 8, "day": 5, "minute": 590, "type": "worker_start", "data": { "jobId": "4", "vehicleId": "tractor2", "jobType": "FIELDWORK", "fieldId": 2 } },
+    { "seq": 9, "day": 5, "minute": 600, "type": "worker_start", "data": { "jobId": "2", "vehicleId": "tractor1", "jobType": "FIELDWORK", "fieldId": 1 } },
+    { "seq": 10, "day": 5, "minute": 650, "type": "worker_stop", "data": { "jobId": "4", "vehicleId": "tractor2", "reason": "ERROR_BLOCKED_BY_OBJECT", "durationMin": 60, "wagesTotal": 45 } },
+    { "seq": 11, "day": 5, "minute": 720, "type": "worker_stop", "data": { "jobId": "2", "vehicleId": "tractor1", "reason": "SUCCESS_FINISHED_JOB", "durationMin": 120, "wagesTotal": 80 } },
+    { "seq": 12, "day": 6, "minute": 100, "type": "worker_start", "data": { "jobId": "5", "vehicleId": "tractor1", "jobType": "DELIVER", "fieldId": null } },
+    { "seq": 13, "day": 6, "minute": 160, "type": "worker_stop", "data": { "jobId": "5", "vehicleId": "tractor1", "reason": "SUCCESS_STOPPED_BY_USER", "durationMin": 60, "wagesTotal": 30 } },
+    { "seq": 14, "day": 6, "minute": 1400, "type": "worker_start", "data": { "jobId": "6", "vehicleId": "tractor1", "jobType": "FIELDWORK", "fieldId": 1 } },
+    { "seq": 15, "day": 7, "minute": 40, "type": "worker_stop", "data": { "jobId": "6", "vehicleId": "tractor1", "reason": "ERROR_OUT_OF_FUEL", "durationMin": 80, "wagesTotal": 50 } },
+    { "seq": 16, "day": 7, "minute": 100, "type": "worker_start", "data": { "jobId": "7", "vehicleId": "tractor1", "jobType": "FIELDWORK", "fieldId": 1 } },
+    { "seq": 17, "day": 7, "minute": 200, "type": "worker_stop", "data": { "jobId": "7", "vehicleId": "tractor1", "reason": "SUCCESS_FINISHED_JOB", "durationMin": 100, "wagesTotal": 60 } },
+    { "seq": 18, "year": 2, "day": 8, "minute": 0, "type": "day_rollover", "data": { "balance": 250000, "loan": 0, "financeByCategory": {}, "period": 1, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 19, "year": 2, "day": 8, "minute": 0, "farmId": 2, "type": "day_rollover", "data": { "balance": 80000, "loan": 0, "financeByCategory": {}, "period": 1, "dayInPeriod": 1, "daysPerPeriod": 1 } },
+    { "seq": 20, "year": 2, "day": 8, "minute": 60, "type": "worker_start", "data": { "jobId": "9", "vehicleId": "tractor1", "jobType": "FIELDWORK", "fieldId": 1 } },
+    { "seq": 21, "year": 2, "day": 8, "minute": 90, "type": "worker_stop", "data": { "jobId": "9", "vehicleId": "tractor1", "reason": "ERROR_OUT_OF_FUEL", "durationMin": 30, "wagesTotal": 10 } },
+    { "seq": 22, "year": 2, "day": 8, "minute": 100, "type": "worker_start", "data": { "jobId": "10", "vehicleId": "tractor3", "jobType": "FIELDWORK", "fieldId": 1 } },
+    { "seq": 23, "year": 2, "day": 8, "minute": 130, "type": "worker_stop", "data": { "jobId": "10", "vehicleId": "tractor3", "reason": "UNKNOWN", "durationMin": 30, "wagesTotal": 5 } }
+  ],
+  "expect": {
+    "worker_downtime": [
+      { "season": 1, "farm_id": 1, "reason": "ERROR_OUT_OF_FUEL", "outcome": "failed", "stops": 2, "idle_minutes": 120, "open_stops": 0, "wages": 90 },
+      { "season": 1, "farm_id": 1, "reason": "ERROR_BLOCKED_BY_OBJECT", "outcome": "failed", "stops": 2, "idle_minutes": 30, "open_stops": 1, "wages": 90 },
+      { "season": 1, "farm_id": 1, "reason": "SUCCESS_FINISHED_JOB", "outcome": "finished", "stops": 2, "idle_minutes": 2120, "open_stops": 0, "wages": 140 },
+      { "season": 1, "farm_id": 1, "reason": "SUCCESS_STOPPED_BY_USER", "outcome": "stopped", "stops": 1, "idle_minutes": 1240, "open_stops": 0, "wages": 30 },
+      { "season": 1, "farm_id": 2, "reason": "ERROR_OUT_OF_FUEL", "outcome": "failed", "stops": 1, "idle_minutes": 0, "open_stops": 1, "wages": 20 },
+      { "season": 2, "farm_id": 1, "reason": "ERROR_OUT_OF_FUEL", "outcome": "failed", "stops": 1, "idle_minutes": 0, "open_stops": 1, "wages": 10 },
+      { "season": 2, "farm_id": 1, "reason": "UNKNOWN", "outcome": "unknown", "stops": 1, "idle_minutes": 0, "open_stops": 1, "wages": 5 }
+    ]
+  }
+}

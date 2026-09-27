@@ -1,0 +1,215 @@
+# The ledger (P2)
+
+The mod writes every money, harvest, field-work, machine and hired-worker event to an append-only
+log. The bridge copies each line into the Supabase table `events`, keyed by
+`(save_id, branch_id, seq)`. Everything else is computed by SQL views, so the web app only reads,
+and one set of formulas serves every screen.
+
+The formulas are pinned by golden fixtures in
+[`packages/schema/fixtures/ledger/`](../packages/schema/fixtures/ledger): event lines in, the rows
+each view must hold out. The SQL views run them today (`supabase/test/analytics.test.ts`); the
+mod's in-game ledger (P3) will run the same files, so the two implementations cannot drift apart.
+
+## Tables
+
+| Table | Key | What it holds |
+| --- | --- | --- |
+| `saves` | `id`, the mod's saveId | Owner, name, map, mod version, last sync |
+| `save_members` | `(save_id, user_id)` | Who else sees the save: `member` (reads and syncs) or `viewer` (reads) |
+| `save_branches` | `(save_id, branch_id)` | Each line of play: its parent, where it forked, when it was last played |
+| `events` | `(save_id, branch_id, seq)` | Every event line, append-only; a repeated insert does nothing |
+| `snapshots` | `(save_id, branch_id, day)` | Once per game day: the `farm` object of `live_farm.json` |
+
+Migrations: [`supabase/migrations/`](../supabase/migrations). The bridge never inserts branches
+itself: an event's insert trigger creates its branch, and a `session` event records where the
+branch forked and when it was played.
+
+## Which events count
+
+Reloading an older savegame starts a new branch (PLAN_REVIEW.md F2). Its first event is a `session`
+event carrying `parentBranchId` and `forkSeq`, the seq the savegame was at, and its seqs continue from
+there. The views count:
+
+- the **active branch**, the one whose latest `session` started last (`save_active_branch`), in full;
+- each **ancestor** up to the smallest fork seq on the way down to it (`save_lineage`).
+
+Events of abandoned branches, and an ancestor's events after the fork, never count. Loading a
+branch's latest savegame again continues that branch and makes it active again. `ledger_events` is
+the counted events, and every analytics view reads from it.
+
+## Seasons
+
+A season is the game year, `environment.currentYear`, which every event carries in the envelope
+(`year`). It is recorded rather than derived from the day number because days per month can change
+mid-save (C1).
+
+## Analytics
+
+### `vehicle_cost_per_hour`
+
+One row per machine the ledger has seen.
+
+```text
+cost_per_hour         = (capital + fuel + wages + upkeep) / hours
+machine_cost_per_hour = (capital + fuel + upkeep) / hours
+hours                 = latest operating hours - hours when bought (or first seen)
+```
+
+- **Capital** is what was paid less what the machine brought back.
+  - Paid: the `shop` money booked to the machine, else its `vehicle_added` price.
+  - Brought back: the sale income once sold, nothing once gone without a sale, else today's
+    `sellValue` from `vehicle_hours`.
+- **Leased machine.** Capital is the fee paid up front; the running leasing costs are upkeep.
+- **A machine the farm had before FarmLink.** There is no purchase to go on, so capital is unknown
+  (`capital_known = false`) and only its running costs count.
+- **Fuel, wages, upkeep.** `money` events whose context names the machine: `fuel`, `wage`, and
+  `vehicle` (repairs, leasing, paint).
+
+### `field_season_pnl`
+
+One row per field and season. The handoff asks for one per field, fill type and season. Costs cannot
+be split between the crops of one field, so the row lists every fill type the field gave in `yields`,
+and `fill_type` is the one that earned most.
+
+```text
+revenue = Σ liters harvested × price per liter          (per fill type)
+costs   = input costs + machine costs + wages
+net     = revenue − costs;  net_per_ha = net / area_ha
+```
+
+- **Price per liter.** Grain is pooled in silos, so a sale cannot be traced to a field.
+  - `sales`: the farm's realized price for that fill type in that season, total sale income ÷
+    liters sold.
+  - `market`: when none was sold, the average offered price of that season from the daily `prices`
+    event.
+  - If neither exists, revenue for that fill type is missing and `revenue_incomplete` is true.
+- **Input costs.** `money` events with an `input` context for the field: seed, fertilizer or spray a
+  hired worker bought on the spot. Inputs taken from the farm's own storage were paid for when they
+  were bought, and are not a field cost here.
+- **Machine costs.** Each harvest and field-work event's `workedHours` × that machine's
+  `machine_cost_per_hour`. A machine without a known cost adds hours but no cost.
+- **Wages.** `money` events with a `wage` context, credited to the field of their job. Job ids
+  restart every session, so a wage belongs to the latest `worker_start` of its job id before it.
+- **Area.** From the latest snapshot's `fields` list; `null` for a field no snapshot has listed.
+
+### `worker_downtime`
+
+One row per season, farm and stop reason.
+
+| Column | Meaning |
+| --- | --- |
+| `outcome` | `finished` (`SUCCESS_FINISHED_JOB`, `SUCCESS_SILO_EMPTY`), `stopped` (`SUCCESS_STOPPED_BY_USER`), `failed` (`ERROR_*`) or `unknown` |
+| `stops` | How many jobs ended with this reason |
+| `idle_minutes` | Game minutes from each stop to that machine's next start |
+| `open_stops` | Stops with no restart yet |
+| `wages` | What those jobs cost; for jobs that did not finish, sum the `failed` rows |
+
+### `money_reconciliation`
+
+The P2 exit check (C3). Between two consecutive `day_rollover` events of a farm, the `money` events
+must add up to the change in its balance. `difference` should be 0; the exit criterion allows 1.
+
+### Also available
+
+| View | What it holds |
+| --- | --- |
+| `prices` | Daily selling prices per station and fill type |
+| `vehicles` | Every machine's latest hours and value |
+| `fields` | Field sizes and owners |
+| `my_saves()` | The caller's saves with their role on each |
+
+## Access
+
+Row-level security is on for every table, and every view runs as its caller
+(`security_invoker`), so a view shows exactly the rows its tables would.
+
+| | Owner | Member | Viewer | Anyone else |
+| --- | --- | --- | --- | --- |
+| Read the save, its events and its analytics | yes | yes | yes | no |
+| Sync events and snapshots | yes | yes | no | no |
+| Update name, map, mod version, last sync | yes | yes | no | no |
+| Add or remove members | yes | no | no | no |
+| Leave the save | | yes | yes | |
+| Delete the save | yes | no | no | no |
+
+- **Events are append-only.** Nobody can update or delete one: the grants leave both out.
+- **anon has no access at all.** Supabase grants new tables and functions to `anon` and
+  `authenticated` by default, so the migrations revoke everything and grant back only what is
+  needed.
+- **The bridge writes as the signed-in player**, never with the service role.
+
+## What the mod and bridge must send
+
+These are requirements for the P2 event log (mod) and sync (bridge), which follow this schema.
+
+- **The year.** Every event carries it in the envelope.
+- **Money context**, which is what ties an amount to a machine, a field or a sale:
+  - `sale`: selling fill types, with station, fill type and liters.
+  - `fuel`: buying fuel, with the machine.
+  - `wage`: hired-worker wages, with the job and machine.
+  - `shop`: buying, leasing or selling machines, with the machine once its id is known.
+  - `input`: seed, fertilizer or spray a hired worker buys, with the field.
+  - `vehicle`: repairs, repaint, running leasing costs.
+  - `none`: everything else.
+- **`workedHours`** on `harvest` and `field_work`. These are the operating hours the machine logged
+  over the flushed interval, credited to the machine that logs operating hours.
+- **Baseline hours.** The first session on a save writes one `vehicle_hours` for every machine,
+  including its `sellValue`. After that, only machines whose hours changed, once a day.
+- **`vehicle_added` and `vehicle_removed`.**
+  - `vehicle_added` is only for machines bought or leased while FarmLink runs, with `operatingHours`
+    for a used one. Machines found at the first session are baseline hours, not purchases.
+  - A machine reset to the shop is still the same machine, so the mod must not report it as
+    removed and added.
+- **Flush before a save.** Flush every coalescing bucket before `day_rollover` (F3), and also
+  before the savegame records its seq. Otherwise a reload restores a balance that already includes
+  money the log only wrote after the save.
+- **Contract (mission) work.** It is not the farm's field work, so harvest and field work on a
+  mission field carry `fieldId: null`.
+- **Snapshots.** The bridge upserts one per game day and branch: the `farm` object of
+  `live_farm.json`, which now carries `fields`.
+- **Order.** The bridge inserts each branch's lines in seq order, in batches with
+  `on conflict do nothing`.
+
+## Known limits
+
+- **Machine cost per hour is lifetime to date.** As a machine ages, its current value and hours
+  change, and so do the machine costs of past seasons.
+- **Trailed implements.** A trailed tool logs no operating hours of its own, so its capital reaches
+  field P&L only if the mod credits it the tractor's hours.
+- **Winter crops.** A crop sown in autumn is costed in that year and earns in the next, because a
+  season is the game year.
+- **Market price.** The average over every station and day of the season, not the station the farm
+  sells at.
+- **Taken saveIds.** A saveId another user already owns makes the second user's sync fail (see the
+  risk "Global saveIds" in PLAN_REVIEW.md).
+
+## Performance
+
+`supabase/test/scale.test.ts` builds a save of 100,000 events (1,000 game days) and times every
+view. It is the P4 exit criterion ("under 1 s for a save with 100k events"), run ahead of time with
+`SCALE_TEST=1`.
+
+| View | Time on the development container (Postgres 16) |
+| --- | --- |
+| `field_season_pnl` | 0.5 s; 0.85 s when Postgres JIT-compiles the query |
+| `vehicle_cost_per_hour` | 0.19 s |
+| `money_reconciliation` | 0.10 s |
+| `prices`, `worker_downtime` | under 0.1 s |
+
+These times include reading every row into Node. The views are written as sorts, window functions
+and hash joins with no range joins; the first version, with range joins, took 21 s for field P&L.
+If JIT dominates on the Supabase project, `alter role authenticated set jit = off` is the fix to
+measure in P4.
+
+## Running the tests
+
+```sh
+pnpm --filter @farmlink/supabase test                 # schema, RLS, branches, golden fixtures
+SCALE_TEST=1 pnpm --filter @farmlink/supabase test    # plus the 100k-event timing
+```
+
+The tests need Postgres. With `DATABASE_URL` set they use that server, and they need permission to
+create databases there. Otherwise they start a throwaway cluster from the local Postgres binaries
+(`PG_BIN`, `pg_config`, `/usr/lib/postgresql/*/bin` or `PATH`). Without either they are skipped,
+unless `REQUIRE_POSTGRES` is set, as it is in CI. `supabase/test/shim.sql` stands in for what a
+Supabase project provides: the API roles, `auth.uid()` and the default grants.

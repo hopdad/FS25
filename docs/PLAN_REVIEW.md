@@ -146,8 +146,9 @@ server-only gate until you decide; it is one flag per module.
 All additive or naming-level.
 
 - **C1. Day numbering.** `day` is `environment.currentMonotonicDay`, because days per month can
-  change mid-save (`PERIOD_LENGTH_CHANGED`). `day_rollover` adds `year`, `period`, `dayInPeriod` and
-  `daysPerPeriod`, so seasons are computed from the log without assuming a calendar.
+  change mid-save (`PERIOD_LENGTH_CHANGED`). Every event also carries `year`
+  (`environment.currentYear`), so seasons come straight from the log without assuming a calendar;
+  `day_rollover` and `session` add `period`, `dayInPeriod` and `daysPerPeriod`.
 - **C2. Wall-clock time.** FS25 exposes local time only (`getDate`). `realTs` is written as RFC 3339
   with the local offset when `%z` yields one, for example `2026-09-26T11:04:05-04:00`. The bridge
   normalizes to UTC before upserting.
@@ -169,6 +170,14 @@ All additive or naming-level.
     `worker_start` and `harvest`; `price` becomes one `prices` event per day holding every entry (F3).
   - `meta.json`: `heads` (F2); `beat`, a counter for liveness (F1); `mode`, `saveName` and
     `savegameIndex` for the bridge; `stats` for write-timing diagnostics.
+  - For the analytics views (P2, [LEDGER.md](LEDGER.md)):
+    - `year` on every event (C1).
+    - Two money contexts: `input`, for seed, fertilizer or spray a hired worker buys for a field,
+      and `vehicle`, for repairs and leasing booked to a machine.
+    - `workedHours` on `harvest` and `field_work`, which prices machine time per field.
+    - `operatingHours` on `vehicle_added`, for a used machine, and `sellValue` on `vehicle_hours`.
+    - The calendar on `session`.
+    - A `fields` list in `live_farm.json`, which daily snapshots carry to the ledger.
 - **C8. Whole frames on the WebSocket.** The handoff pushes "JSON diffs". The bridge sends each
   channel frame whole instead: a vehicle frame is about 1 KB a second and a 100-machine fleet frame
   about 10 KB every 5 s, which a LAN does not notice, and a whole frame cannot drift out of sync or
@@ -181,6 +190,23 @@ All additive or naming-level.
   the mod never ignores new commands as old ones.
 - **C10. Alerts name their farm.** `Alert.farmId`, so a multiplayer page shows only its own farm's
   alerts. Game-wide alerts (`game_offline`) carry `null`.
+
+## Schema refinements (Adopted in `supabase/`)
+
+- **S1. Derived tables are views.** The handoff upserts `fields`, `vehicles` and `prices` as tables.
+  Here they are views over `events` and `snapshots`, like the analytics, so nothing can fall out of
+  step with the log, and a reload never has to undo an upsert. The P4 speed target holds without
+  materializing them: [LEDGER.md](LEDGER.md#performance).
+- **S2. Field P&L per field and season.** The handoff asks for field, fill type and season. Inputs,
+  machine time and wages belong to the field, not to one of its crops, so each row lists every fill
+  type the field gave in `yields`.
+- **S3. The active branch is derived.** `save_branches.is_active` would need an update on every
+  switch between branches. The active branch is instead the one whose latest `session` started
+  last, from `last_session_at`, which the event insert keeps current.
+- **S4. Roles.** The owner is `saves.owner_id`; `save_members.role` is `member`, who can read and
+  sync (a member hosting the game runs the bridge), or `viewer`, who can only read.
+- **S5. Reconciliation is a view.** `money_reconciliation` holds the P2 exit check for every pair of
+  consecutive day rollovers.
 
 ## Inconsistencies in the handoff
 
@@ -252,3 +278,12 @@ in particular, may change P1 before its own in-game test ([P1_TEST.md](P1_TEST.m
 - `packages/live-ui`: the phone page, bundled into the bridge as one 47 KB HTML file.
 - Tests: the bridge's `worker.stop` run through the mod's Lua; the page in headless Chromium
   against the real bridge; a smoke test of the compiled executable in CI.
+
+**P2 foundations that need no game session.** While the P0 and P1 runs wait for the PC:
+
+- The probe asks the P2 questions in the same session (see VERIFY_FIRST.md).
+- `supabase/`: the tables, row-level security, the branch rule and the analytics views
+  ([LEDGER.md](LEDGER.md)).
+- `packages/schema/fixtures/ledger/`: golden fixtures that pin every formula.
+- Tests against a real Postgres: every role's access, reloads of older saves, the fixtures, and a
+  100,000-event timing run.

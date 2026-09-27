@@ -902,6 +902,47 @@
                         "additionalProperties": false
                       }
                     },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "fieldId": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "farmlandId": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "areaHa": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "ownerFarmId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          }
+                        },
+                        "required": [
+                          "fieldId",
+                          "farmlandId",
+                          "areaHa",
+                          "ownerFarmId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "weather": {
                       "type": "object",
                       "properties": {

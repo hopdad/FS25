@@ -38,6 +38,16 @@ export const MoneyContext = z.discriminatedUnion("kind", [
     storeItem: z.string().min(1),
     vehicleId: VehicleId.nullable(),
   }),
+  /** Seed, fertilizer or spray a hired worker bought on the spot for the field it works. */
+  z.object({
+    kind: z.literal("input"),
+    fillType: FillTypeName,
+    liters: z.number().min(0),
+    fieldId: z.int().min(1).nullable(),
+    vehicleId: VehicleId.nullable(),
+  }),
+  /** A cost tied to one machine that is not fuel or wages: repairs, leasing, paint. */
+  z.object({ kind: z.literal("vehicle"), vehicleId: VehicleId }),
   z.object({ kind: z.literal("none") }),
 ]);
 
@@ -51,6 +61,12 @@ export const MoneyData = z.object({
   count: z.int().min(1).optional(),
 });
 
+/**
+ * Operating hours the machine logged while doing this work. Machine cost per field is these hours
+ * times the machine's cost per hour. Absent or null when unknown.
+ */
+const WorkedHours = z.number().min(0).nullable().optional();
+
 export const HarvestData = z.object({
   /** Null when the position did not resolve to a field; `farmlandId` is still set if known. */
   fieldId: z.int().min(1).nullable(),
@@ -59,6 +75,7 @@ export const HarvestData = z.object({
   liters: z.number().min(0),
   vehicleId: VehicleId,
   isAI: z.boolean(),
+  workedHours: WorkedHours,
 });
 
 export const WorkType = z.enum(["seeding", "spraying", "fertilizing", "tillage", "other"]);
@@ -72,6 +89,7 @@ export const FieldWorkData = z.object({
   inputLiters: z.number().min(0).nullable(),
   vehicleId: VehicleId,
   isAI: z.boolean(),
+  workedHours: WorkedHours,
 });
 
 export const VehicleAddedData = z.object({
@@ -81,6 +99,8 @@ export const VehicleAddedData = z.object({
   name: z.string(),
   price: z.number().min(0),
   leased: z.boolean(),
+  /** Hours already on the clock, for a used machine; absent means 0. */
+  operatingHours: z.number().min(0).optional(),
 });
 
 export const VehicleRemovedData = z.object({
@@ -92,6 +112,8 @@ export const VehicleRemovedData = z.object({
 export const VehicleHoursData = z.object({
   vehicleId: VehicleId,
   operatingHours: z.number().min(0),
+  /** What the shop would pay for the machine today, which prices its depreciation. */
+  sellValue: z.number().min(0).optional(),
 });
 
 export const WorkerStartData = z.object({
@@ -123,12 +145,16 @@ export const PricesData = z.object({
   ),
 });
 
+/**
+ * Written for each farm when a new day starts, after every coalesced money entry of the day before
+ * has been flushed (PLAN_REVIEW.md F3), so reconciliation over seq intervals is exact (C3). The
+ * balance is the farm's at that moment; the calendar is the new day's.
+ */
 export const DayRolloverData = z.object({
   balance: z.number(),
   loan: z.number().min(0),
   /** Finance statistic name to amount for the day that just ended. */
   financeByCategory: z.record(z.string(), z.number()),
-  year: z.int().min(0),
   period: z.int().min(1).max(12),
   dayInPeriod: z.int().min(1),
   daysPerPeriod: z.int().min(1),
@@ -138,6 +164,10 @@ export const SessionData = z.object({
   modVersion: z.string().min(1),
   gameVersion: z.string().min(1),
   integrations: z.array(z.string()),
+  /** The calendar at load. */
+  period: z.int().min(1).max(12),
+  dayInPeriod: z.int().min(1),
+  daysPerPeriod: z.int().min(1),
   /** Set on the first session of a branch created by reloading an older save (PLAN_REVIEW.md F2). */
   parentBranchId: Uuid.nullable().optional(),
   forkSeq: z.int().min(0).nullable().optional(),
@@ -151,6 +181,11 @@ export const EnvelopeBase = z.object({
   seq: z.int().min(1),
   day: GameDay,
   minute: MinuteOfDay,
+  /**
+   * `environment.currentYear`. Field P&L and worker downtime are per season, and days per month can
+   * change mid-save, so the year is recorded rather than derived from `day` (PLAN_REVIEW.md C1).
+   */
+  year: z.int().min(0),
   realTs: RealTimestamp,
   farmId: FarmId,
   /** FS `uniqueUserId` of the player who caused the event; null for AI and system events. */

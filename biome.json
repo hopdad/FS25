@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!mod", "!docs", "!**/json-schema", "!**/generated"]
+    "includes": ["**", "!mod", "!docs", "!**/json-schema", "!**/generated", "!**/fixtures/ledger"]
   },
   "formatter": {
     "enabled": true,

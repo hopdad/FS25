@@ -2,6 +2,7 @@ packages:
   - bridge
   - web
   - packages/*
+  - supabase
 
 onlyBuiltDependencies:
   - esbuild

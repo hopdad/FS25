@@ -148,10 +148,24 @@ export const WeatherType = z.enum([
   "UNKNOWN",
 ]);
 
-/** `live_farm.json`, written every 60 s: every farm in the save, and the world's weather. */
+/** A field, the farmland it lies on and who owns that farmland. */
+export const FieldInfo = z.object({
+  fieldId: z.int().min(1),
+  farmlandId: z.int().min(1).nullable(),
+  areaHa: z.number().min(0),
+  /** 0 when no farm owns the farmland. */
+  ownerFarmId: FarmId,
+});
+
+/**
+ * `live_farm.json`, written every 60 s: every farm in the save, and the world's weather. Its `farm`
+ * object is also the payload of the ledger's daily snapshot (PLAN_REVIEW.md F3).
+ */
 export const LiveFarm = LiveHeader.extend({
   farm: z.object({
     farms: z.array(FarmState),
+    /** Every field on the map. From P2, so field P&L can be priced per hectare. */
+    fields: z.array(FieldInfo).optional(),
     weather: z.object({
       current: z.object({ type: WeatherType, temperatureC: z.number() }).nullable(),
       forecast: z.array(
@@ -175,4 +189,5 @@ export type FleetVehicle = z.infer<typeof FleetVehicle>;
 export type VehicleState = z.infer<typeof VehicleState>;
 export type ImplementState = z.infer<typeof ImplementState>;
 export type FarmState = z.infer<typeof FarmState>;
+export type FieldInfo = z.infer<typeof FieldInfo>;
 export type Stock = z.infer<typeof Stock>;

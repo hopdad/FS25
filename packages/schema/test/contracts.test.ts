@@ -25,6 +25,7 @@ const envelope = (type: string, data: unknown, seq = 1042) => ({
   seq,
   day: 37,
   minute: 845,
+  year: 2,
   realTs: TS,
   farmId: 1,
   userId: null,
@@ -118,7 +119,6 @@ describe("event envelope", () => {
         balance: 1250000,
         loan: 0,
         financeByCategory: { harvestIncome: 5120.5, wagePayment: -812.4 },
-        year: 2,
         period: 4,
         dayInPeriod: 1,
         daysPerPeriod: 3,
@@ -127,9 +127,32 @@ describe("event envelope", () => {
         modVersion: "0.1.0.0",
         gameVersion: "1.12.0.0",
         integrations: ["FS25_Courseplay"],
+        period: 4,
+        dayInPeriod: 1,
+        daysPerPeriod: 3,
         parentBranchId: SAVE,
         forkSeq: 1000,
       }),
+      envelope("money", {
+        amount: -310.2,
+        moneyType: "PURCHASE_SEEDS",
+        context: { kind: "input", fillType: "SEEDS", liters: 450, fieldId: 12, vehicleId: "v14" },
+      }),
+      envelope("money", {
+        amount: -1840,
+        moneyType: "VEHICLE_REPAIR",
+        context: { kind: "vehicle", vehicleId: "v14" },
+      }),
+      envelope("harvest", {
+        fieldId: 12,
+        farmlandId: 12,
+        fillType: "WHEAT",
+        liters: 9000,
+        vehicleId: "v14",
+        isAI: false,
+        workedHours: 0.4,
+      }),
+      envelope("vehicle_hours", { vehicleId: "v20", operatingHours: 91, sellValue: 318000 }),
     ];
     for (const sample of samples) {
       const result = EventEnvelope.safeParse(sample);
@@ -356,6 +379,22 @@ describe("JSON Schema export", () => {
         "utf8",
       );
       expect(committed, name).toBe(text);
+    }
+  });
+});
+
+describe("ledger golden fixtures", () => {
+  it("hold only valid event lines, in seq order without gaps", async () => {
+    const { ledgerFixtures } = await import("../fixtures/ledger");
+    const fixtures = ledgerFixtures();
+    expect(fixtures.map((f) => f.name)).toEqual([
+      "field_season",
+      "reconciliation",
+      "worker_downtime",
+    ]);
+    for (const fixture of fixtures) {
+      expect(fixture.events.map((e) => e.seq)).toEqual(fixture.events.map((_, i) => i + 1));
+      expect(Object.keys(fixture.expect).length, fixture.name).toBeGreaterThan(0);
     }
   });
 });

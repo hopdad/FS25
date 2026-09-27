@@ -1,0 +1,35 @@
+{
+  "description": "Two farms in multiplayer between three day rollovers: sales, fuel, coalesced wages, a loan, money booked in the rollover frame just before the rollover, and on the second day an expense the log missed. Pins money_reconciliation, the P2 exit check (PLAN_REVIEW.md C3).",
+  "defaults": {
+    "v": 1,
+    "saveId": "2a4c6e8f-0b1d-4f3a-8c5e-7f9a1b3c5d7e",
+    "branchId": "6c8e0a2b-4d6f-4a1c-9e3b-5d7f9a1c3e5b",
+    "farmId": 1,
+    "year": 3,
+    "userId": null,
+    "realTs": "2026-09-27T14:00:00Z"
+  },
+  "events": [
+    { "seq": 1, "day": 20, "minute": 480, "type": "session", "data": { "modVersion": "0.3.0.0", "gameVersion": "1.10.1.0", "integrations": [], "period": 5, "dayInPeriod": 2, "daysPerPeriod": 3 } },
+    { "seq": 2, "day": 21, "minute": 0, "type": "day_rollover", "data": { "balance": 100000, "loan": 0, "financeByCategory": {}, "period": 5, "dayInPeriod": 3, "daysPerPeriod": 3 } },
+    { "seq": 3, "day": 21, "minute": 0, "farmId": 2, "type": "day_rollover", "data": { "balance": 50000, "loan": 20000, "financeByCategory": {}, "period": 5, "dayInPeriod": 3, "daysPerPeriod": 3 } },
+    { "seq": 4, "day": 21, "minute": 300, "userId": "4f1e2d3c", "type": "money", "data": { "amount": 5000, "moneyType": "SOLD_PRODUCTS", "context": { "kind": "sale", "stationId": "elevator", "fillType": "WHEAT", "liters": 11000 } } },
+    { "seq": 5, "day": 21, "minute": 400, "farmId": 2, "userId": "9b8a7c6d", "type": "money", "data": { "amount": -1500, "moneyType": "PURCHASE_FUEL", "count": 40, "context": { "kind": "fuel", "vehicleId": "f2tractor", "fillType": "DIESEL", "liters": 1200 } } },
+    { "seq": 6, "day": 21, "minute": 500, "type": "money", "data": { "amount": -250.5, "moneyType": "AI", "count": 30, "context": { "kind": "wage", "jobId": "3", "vehicleId": "tractor1" } } },
+    { "seq": 7, "day": 21, "minute": 600, "farmId": 2, "userId": "9b8a7c6d", "type": "money", "data": { "amount": 20000, "moneyType": "LOAN", "context": { "kind": "none" } } },
+    { "seq": 8, "day": 22, "minute": 0, "type": "money", "data": { "amount": -100, "moneyType": "PROPERTY_MAINTENANCE", "count": 24, "context": { "kind": "none" } } },
+    { "seq": 9, "day": 22, "minute": 0, "type": "day_rollover", "data": { "balance": 104649.5, "loan": 0, "financeByCategory": { "soldProducts": 5000, "wagePayment": -250.5, "propertyMaintenance": -100 }, "period": 6, "dayInPeriod": 1, "daysPerPeriod": 3 } },
+    { "seq": 10, "day": 22, "minute": 0, "farmId": 2, "type": "day_rollover", "data": { "balance": 68500, "loan": 40000, "financeByCategory": { "purchaseFuel": -1500 }, "period": 6, "dayInPeriod": 1, "daysPerPeriod": 3 } },
+    { "seq": 11, "day": 22, "minute": 100, "userId": "4f1e2d3c", "type": "money", "data": { "amount": -2000, "moneyType": "VEHICLE_REPAIR", "context": { "kind": "vehicle", "vehicleId": "tractor1" } } },
+    { "seq": 12, "day": 23, "minute": 0, "type": "day_rollover", "data": { "balance": 102000, "loan": 0, "financeByCategory": { "vehicleRunningCost": -2649.5 }, "period": 6, "dayInPeriod": 2, "daysPerPeriod": 3 } },
+    { "seq": 13, "day": 23, "minute": 0, "farmId": 2, "type": "day_rollover", "data": { "balance": 68500, "loan": 40000, "financeByCategory": {}, "period": 6, "dayInPeriod": 2, "daysPerPeriod": 3 } }
+  ],
+  "expect": {
+    "money_reconciliation": [
+      { "farm_id": 1, "from_day": 21, "to_day": 22, "balance_change": 4649.5, "money_total": 4649.5, "difference": 0 },
+      { "farm_id": 2, "from_day": 21, "to_day": 22, "balance_change": 18500, "money_total": 18500, "difference": 0 },
+      { "farm_id": 1, "from_day": 22, "to_day": 23, "balance_change": -2649.5, "money_total": -2000, "difference": -649.5 },
+      { "farm_id": 2, "from_day": 22, "to_day": 23, "balance_change": 0, "money_total": 0, "difference": 0 }
+    ]
+  }
+}

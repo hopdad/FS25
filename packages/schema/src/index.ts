@@ -13,6 +13,7 @@ export * from "./primitives";
 export * from "./probe";
 export * from "./protocol";
 export * from "./reasons";
+export * from "./rows";
 export * from "./xml";
 
 export const MOD_NAME = "FS25_FarmLink";

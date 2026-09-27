@@ -28,12 +28,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      - name: TypeScript tests (with the Lua end-to-end test and the page in Chrome)
+      - name: TypeScript tests (with the Lua end-to-end test, the page in Chrome, and SQL on Postgres)
         run: pnpm test
         env:
-          # Fail instead of skipping when the runner lacks one of them.
+          # Fail instead of skipping when the runner lacks one of them. The runner image ships the
+          # Postgres binaries, and the SQL tests start a throwaway cluster from them.
           REQUIRE_LUA: "1"
           REQUIRE_BROWSER: "1"
+          REQUIRE_POSTGRES: "1"
       - name: Lua specs
         run: pnpm test:lua
 
