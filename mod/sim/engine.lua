@@ -235,14 +235,14 @@ local function newFarmManager()
         self.byId[farm.farmId] = farm
         return farm
     end
-    function manager:getFarms()
-        return self.farms
-    end
     function manager:getFarmById(farmId)
         return self.byId[farmId]
     end
-    manager:add(Farm.new(0, 0, "Spectator"))
+    -- Like the game, the list starts with the spectator farm and holds the unnamed guided-tour farm.
+    local spectator = manager:add(Farm.new(0, 0, "Spectator"))
+    spectator.isSpectator = true
     manager:add(Farm.new(1, 100000, "Riverbend Farms"))
+    manager:add(Farm.new(14, 0, nil))
     return manager
 end
 

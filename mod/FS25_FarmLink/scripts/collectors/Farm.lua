@@ -103,12 +103,26 @@ function Farm.productions(farmId)
 end
 
 local function farmList()
-    local Game = FarmLink.Game
-    local farms = Game.call(g_farmManager, "getFarms")
-    if type(farms) ~= "table" and g_farmManager ~= nil then
-        farms = g_farmManager.farms
+    local farms = g_farmManager ~= nil and g_farmManager.farms or nil
+    if type(farms) ~= "table" then
+        farms = FarmLink.Game.call(g_farmManager, "getFarms")
     end
     return type(farms) == "table" and farms or {}
+end
+
+---False for the two farms the game creates for itself and hides from its own farm screen: the
+---spectator farm (id 0) and the guided-tour farm (FarmManager.GUIDED_TOUR_FARM_ID, 14), which has no
+---name and would otherwise show as a second farm in every single-player game.
+function Farm.isPlayerFarm(farm)
+    local tourId = 14
+    if type(FarmManager) == "table" and type(FarmManager.GUIDED_TOUR_FARM_ID) == "number" then
+        tourId = FarmManager.GUIDED_TOUR_FARM_ID
+    end
+    return type(farm) == "table"
+        and type(farm.farmId) == "number"
+        and farm.farmId > 0
+        and farm.farmId ~= tourId
+        and farm.isSpectator ~= true
 end
 
 function Farm.farmRow(farm)
@@ -161,12 +175,12 @@ function Farm.weather()
     return { current = current, forecast = Json.array(days) }
 end
 
----One live_farm.json document. Farm 0 is the spectator farm and is left out.
+---One live_farm.json document, for the farms players can play.
 function Farm.frame(ctx)
     local Clock = FarmLink.Clock
     local farms = {}
     for _, farm in ipairs(farmList()) do
-        if type(farm) == "table" and type(farm.farmId) == "number" and farm.farmId > 0 then
+        if Farm.isPlayerFarm(farm) then
             local ok, row = pcall(Farm.farmRow, farm)
             if ok then
                 farms[#farms + 1] = row

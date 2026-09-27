@@ -117,6 +117,18 @@ describe("fleet and farm channels", function()
             assert.are.same({ day = 38, type = "RAIN", minC = 9, maxC = 17 }, frame.farm.weather.forecast[1])
         end)
 
+        it("leaves out the spectator and guided-tour farms the game hides", function()
+            local isPlayerFarm = FarmLink.FarmCollector.isPlayerFarm
+            assert.is_true(isPlayerFarm({ farmId = 1 }))
+            assert.is_false(isPlayerFarm({ farmId = 0 }))
+            assert.is_false(isPlayerFarm({ farmId = 14 }))
+            assert.is_false(isPlayerFarm({ farmId = 3, isSpectator = true }))
+            _G.FarmManager = { GUIDED_TOUR_FARM_ID = 15 }
+            assert.is_true(isPlayerFarm({ farmId = 14 }))
+            assert.is_false(isPlayerFarm({ farmId = 15 }))
+            _G.FarmManager = nil
+        end)
+
         it("still writes the file when the weather cannot be read", function()
             Engine.loadMission({})
             g_currentMission.environment.weather = nil

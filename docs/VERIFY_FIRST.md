@@ -165,6 +165,26 @@ and `renameFile` anyway.
 | Players | `user.uniqueUserId` (persisted string), `userManager:getUserIdByConnection(connection)` (session id) |
 | Load and start hooks | `Mission00.loadItemsFinished`, `Mission00.onStartMission` (InvestorFarm) |
 
+## P1 API audit
+
+Every engine function and field the P1 mod reads was checked against the script dump, the GDN
+pages and working mods before the P1 game session:
+
+| Area | Calls | Confirmed by |
+| --- | --- | --- |
+| Driven vehicle | `getLastSpeed`, `getMotor`, `getMotorState`, `getLastMotorRpm`, `getGearToDisplay`, `getDamageAmount`, `getFillUnitFillLevelPercentage`, `spec_motorized.consumersByFillType`, `propellantFillUnitIndices`, `fillUnit.showOnInfoHud`, `getAttachedImplements` | VDTelemetry `collect/vehicle/Motor.lua`, `aspects/FillUnit.lua` |
+| Fleet | `getShowInVehiclesOverview`, `propertyState` 4 for contract equipment, `getOwnerFarmId`, `getUniqueId` | `Vehicle.lua`; VDTelemetry `FleetExporter.lua` |
+| AI jobs | `vehicleParameter:getVehicle()`, `positionAngleParameter:getPosition()` (returns x, z), `jobTypeIndex`, `aiJobTypeManager:getJobTypeByIndex(i).name`, `getHelperName`, `startedFarmId`, `getJobById`, `stopJob` | `ai/jobs/AIJobFieldWork.lua`, `AIJob.lua`, `AIJobTypeManager.lua`, `AISystem.lua` |
+| Fields | `g_fieldManager.farmlandIdFieldMapping[id]:getId()` | `field/FieldManager.lua` (saveToXMLFile) |
+| Farm | `g_farmManager.farms`, `farm.money` or `getBalance()`, `farm.loan`, `spec_silo.storages` with per-farm `ownerFarmId`, `getProductionPointsForFarmId`, `storage:getFillLevels()` | VDTelemetry `MapExporter.lua`, `FinanceExporter.lua`, `StorageExporter.lua`, `ProductionExporter.lua` |
+| Weather | `environment.weather.forecast:getCurrentWeather()` (`forecastType`, `temperature`) and `:getDailyForecast(n)` (`day`, `lowTemperature`, `highTemperature`) | VDTelemetry `WeatherExporter.lua`, which mirrors the game's calendar frame |
+| Courseplay, AutoDrive | `vehicle:getIsCpActive()`, `vehicle.ad.stateModule:isActive()` | Courseplay_FS25 `CpAIWorker.lua`, FS25_AutoDrive `StateModule.lua` |
+
+One bug came out of it: the farm list included the two farms the game hides, the spectator farm
+and the unnamed guided-tour farm (`FarmManager.GUIDED_TOUR_FARM_ID`, 14), so every single-player
+page would have shown a farm picker with a second, nameless farm. `live_farm.json` now leaves both
+out.
+
 ## Sources
 
 | Source | Commit |
@@ -175,6 +195,8 @@ and `renameFile` anyway.
 | [rittermod/FS25_TransactionLog](https://github.com/rittermod/FS25_TransactionLog) | `0efc617` |
 | [iNotrez/FS25_InvestorFarm](https://github.com/iNotrez/FS25_InvestorFarm) | `855e978` |
 | [BitBarn-Mods/FS25_YieldTracker](https://github.com/BitBarn-Mods/FS25_YieldTracker) | `b1aa3ee` |
+| [Courseplay/Courseplay_FS25](https://github.com/Courseplay/Courseplay_FS25) | `150dcd5` |
+| [Stephan-S/FS25_AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) | `48702cd` |
 
 The dump does not include `FSBaseMission`, `Farm`, `MoneyType` or the vehicle specializations;
 those answers come from the GDN code excerpts and the mods. Nothing from these repositories is
