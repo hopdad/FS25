@@ -33,9 +33,10 @@ Golden fixtures pin each formula. The mod writes the event log, and forks a new 
 older save is loaded; the bridge checks every line and reports gaps. The log records:
 - money, with what it was for (sale, fuel, wages, bought seed, repairs);
 - hired workers' starts and stops;
+- harvest and field work, by field;
 - each day's rollover and prices.
 
-Harvest, field work, machines and the sync to Supabase come next.
+Machines (bought, sold, hours) and the sync to Supabase come next.
 [docs/LEDGER.md](docs/LEDGER.md) describes the ledger.
 
 | Document | What it is |

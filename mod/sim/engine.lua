@@ -285,7 +285,7 @@ end
 
 -- Fill types --------------------------------------------------------------------------------------
 
-local FILL_TYPES = { "UNKNOWN", "DIESEL", "WHEAT", "DEF", "AIR", "SEEDS", "BARLEY", "FLOUR", "LIQUIDFERTILIZER" }
+local FILL_TYPES = { "UNKNOWN", "DIESEL", "WHEAT", "DEF", "AIR", "SEEDS", "BARLEY", "FLOUR", "LIQUIDFERTILIZER", "HERBICIDE" }
 local FILL_TYPE_INDEX = {}
 for index, name in ipairs(FILL_TYPES) do
     FILL_TYPE_INDEX[name] = index
@@ -578,6 +578,19 @@ local function newSowingMachine()
             if self:getIsAIActive() and g_currentMission.missionInfo.helperBuySeeds then
                 g_currentMission:addMoney(-(params.inputPrice or 0), farmId, MoneyType.PURCHASE_SEEDS)
             end
+        end
+    end
+    return Spec
+end
+
+-- Cultivator and Plow report their hectares from onEndWorkAreaProcessing, like the others.
+local function newTillageSpec(specKey, statName)
+    local Spec = {}
+    function Spec.onEndWorkAreaProcessing(self, _dt)
+        local params = self[specKey].workAreaParameters
+        if params.lastStatsArea > 0 then
+            local ha = MathUtil.areaToHa(params.lastStatsArea, g_currentMission:getFruitPixelsToSqm())
+            g_farmManager:updateFarmStats(self:getOwnerFarmId(), statName, ha)
         end
     end
     return Spec
@@ -977,6 +990,15 @@ function Engine.install(opts)
     AIJob = newAIJobClass()
     SowingMachine = newSowingMachine()
     Sprayer = newSprayer()
+    Cultivator = newTillageSpec("spec_cultivator", "cultivatedHectares")
+    Plow = newTillageSpec("spec_plow", "plowedHectares")
+    -- Contract land: Engine.contractAt(true) puts every position on an active mission's field.
+    Engine.onContractLand = false
+    g_missionManager = {
+        getMissionMapActiveMissionIdAtWorldPosition = function(_self, _x, _z)
+            return Engine.onContractLand and 7 or 0
+        end,
+    }
     MathUtil = {
         areaToHa = function(area, pixelsToSqm)
             return area * pixelsToSqm / 10000
@@ -1015,9 +1037,17 @@ function Engine.install(opts)
         registerOverwrittenFunctions = function(_vehicleType) end,
     }
     SpecializationUtil = {
+        -- As in the game: each overwrite receives the function it replaces as superFunc, so several
+        -- mods can overwrite the same one. `overwritten` lists what was registered, for the specs.
         registerOverwrittenFunction = function(vehicleType, name, fn)
+            vehicleType.functions = vehicleType.functions or {}
+            local previous = vehicleType.functions[name]
+            vehicleType.functions[name] = function(self, ...)
+                return fn(self, previous, ...)
+            end
             vehicleType.overwritten = vehicleType.overwritten or {}
-            vehicleType.overwritten[name] = fn
+            vehicleType.overwritten[name] = vehicleType.overwritten[name] or {}
+            table.insert(vehicleType.overwritten[name], fn)
         end,
     }
     FillType = FILL_TYPE_INDEX
@@ -1069,9 +1099,14 @@ end
 
 ---Simulates the vehicle-type finalization that happens during map load.
 function Engine.finalizeCombineType()
-    local vehicleType = {}
+    local vehicleType = { functions = { addCutterArea = Combine.addCutterArea } }
     Combine.registerOverwrittenFunctions(vehicleType)
     return vehicleType
+end
+
+---A combine threshes: liters of a fill type through its type's addCutterArea, as the cutter calls it.
+function Engine.thresh(vehicleType, combine, liters, fillType)
+    return vehicleType.functions.addCutterArea(combine, 5, liters, 1, FILL_TYPE_INDEX[fillType], 1, combine:getOwnerFarmId(), 1)
 end
 
 function Engine.loadMission(opts)
@@ -1139,14 +1174,19 @@ end
 
 ---One frame of sowing (or, with the sprayer spec, spraying): the area worked, the liters used and
 ---what a hired worker paid for them. Dispatched by name, as SpecializationUtil.raiseEvent does.
-function Engine.workArea(vehicle, spec, sqm, inputPrice, liters)
-    if spec == Sprayer then
+function Engine.workArea(vehicle, spec, sqm, inputPrice, liters, fillType)
+    if spec == Cultivator or spec == Plow then
+        local key = spec == Plow and "spec_plow" or "spec_cultivator"
+        vehicle[key] = { workAreaParameters = { lastStatsArea = sqm } }
+    elseif spec == Sprayer then
+        local fillTypeIndex = FILL_TYPE_INDEX[fillType or "LIQUIDFERTILIZER"]
         vehicle.spec_sprayer = {
             workAreaParameters = {
                 lastChangedArea = sqm,
                 lastStatsArea = sqm,
                 inputPrice = inputPrice,
-                pendingFillType = FILL_TYPE_INDEX.LIQUIDFERTILIZER,
+                sprayFillType = fillTypeIndex,
+                pendingFillType = fillTypeIndex,
                 pendingUsage = liters or 0,
                 usage = liters or 0,
             },

@@ -4,10 +4,11 @@
 --   lua5.1 sim/ledger.lua <profileDir> [--block-append]
 --
 -- A day of play goes through the real producers:
--- - a hired worker with its wages, and the seed it buys;
+-- - a hired worker sowing a field, with its wages and the seed it buys;
+-- - a combine threshing wheat on that field;
 -- - a sale, a refuel, a repair and a machine bought in the shop;
 -- - two new days, each with a day rollover and the day's prices.
--- The event types that have no producer yet (machines, harvest, field work) are written directly.
+-- The machine events, which have no producer yet, are written directly.
 -- The career is then saved, a little more money moves, and the session ends without saving.
 -- Loading that savegame again forks a new branch.
 --
@@ -29,11 +30,13 @@ end
 
 Engine.install({ profileDir = profileDir, blockAppend = arg[2] == "--block-append" })
 Engine.loadMod()
+local combineType = Engine.finalizeCombineType()
 Engine.loadMission({ savegameIndex = 1 })
 
 local EventLog = FarmLink.EventLog
 local PLAYER = "4f1e2d3c"
 
+local seeder = Engine.newVehicle({ uniqueId = "vehicle91c0", name = "Amazone Cirrus 6003", x = 120.5, z = -40.2 })
 local tractor = Engine.addVehicle(Engine.newVehicle({
     uniqueId = "vehicle7f3a",
     name = "Fendt 942 Vario",
@@ -41,48 +44,44 @@ local tractor = Engine.addVehicle(Engine.newVehicle({
     z = -40.2,
     operatingTimeMs = 90 * 3600000,
     fuel = { fillType = "DIESEL", level = 250, capacity = 400 },
+    implements = { seeder },
+}))
+local combine = Engine.addVehicle(Engine.newVehicle({
+    uniqueId = "vehicle55aa",
+    name = "CLAAS LEXION 8900",
+    x = 60,
+    z = 12,
+    operatingTimeMs = 400 * 3600000,
 }))
 
 -- The producers, from the game's own calls.
 local job = Engine.newJob(9, tractor, 1, { costScale = 1000, helper = "Sam" })
 Engine.startJob(job)
 Engine.run(0.3, 16)
-Engine.workArea(tractor, SowingMachine, 5000, 12.5, 40)
-Engine.workArea(tractor, SowingMachine, 5000, 12.5, 40)
+-- The seeder buys its seed as the tractor's hired worker sows (implements share the root's AI).
+seeder.isAI = true
+Engine.workArea(seeder, SowingMachine, 5000, 12.5, 40)
+Engine.workArea(seeder, SowingMachine, 5000, 12.5, 40)
+tractor.operatingTime = tractor.operatingTime + 0.3 * 3600000
 Engine.stopJob(job, Engine.AIMessages.ERROR_OUT_OF_FUEL.new())
+seeder.isAI = false
+for _ = 1, 3 do
+    Engine.thresh(combineType, combine, 4000, "WHEAT")
+end
+combine.operatingTime = combine.operatingTime + 0.4 * 3600000
 Engine.sell(1, "WHEAT", 12000)
 Engine.refuel(tractor, 0.5)
 Engine.repair(tractor, 1840)
 Engine.buyVehicle(Engine.newVehicle({ uniqueId = "vehicle3c1d", name = "Kubota M7" }), 110000)
-Engine.run(3.5)
+Engine.run(11.2, 100)
 
--- The types without a producer yet.
+-- The machine events, which have no producer yet.
 EventLog.emit("vehicle_added", 1, {
     vehicleId = "vehicle3c1d",
     storeItem = "data/vehicles/kubota/m7/m7.xml",
     name = "Kubota M7",
     price = 110000,
     leased = false,
-}, PLAYER)
-EventLog.emit("field_work", 1, {
-    fieldId = 12,
-    farmlandId = 12,
-    workType = "seeding",
-    areaHa = 1,
-    inputFillType = "SEEDS",
-    inputLiters = 80,
-    vehicleId = "vehicle7f3a",
-    isAI = true,
-    workedHours = 0.3,
-})
-EventLog.emit("harvest", 1, {
-    fieldId = 12,
-    farmlandId = 12,
-    fillType = "WHEAT",
-    liters = 12000,
-    vehicleId = "vehicle55aa",
-    isAI = false,
-    workedHours = 0.4,
 }, PLAYER)
 EventLog.emit("vehicle_hours", 1, { vehicleId = "vehicle7f3a", operatingHours = 91, sellValue = 318000 })
 EventLog.emit("vehicle_removed", 1, { vehicleId = "vehicle55aa", reason = "sold", operatingHours = 88.5 }, PLAYER)

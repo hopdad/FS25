@@ -70,7 +70,7 @@ if resumeDirectory == nil then
     local job = Engine.newJob(9, tractor, 1, { helper = "Sam" })
     Engine.startJob(job)
     g_currentMission:addMoney(-26.4, 1, MoneyType.AI, true)
-    combineType.overwritten.addCutterArea(tractor, Combine.addCutterArea, 5, 1200, 1, FillType.WHEAT, 1, 1, 1)
+    Engine.thresh(combineType, tractor, 1200, "WHEAT")
     Engine.stopJob(job, Engine.AIMessages.ERROR_OUT_OF_FUEL.new())
     local combineJob = Engine.newJob(nil, combine, 1, { helper = "Alex" })
     Engine.startJob(combineJob)

@@ -102,8 +102,8 @@ describe("P0 probe", function()
 
     it("registers over Combine.addCutterArea and totals liters by farmland and fill type", function()
         local vehicleType = Engine.finalizeCombineType()
-        local overwrite = vehicleType.overwritten.addCutterArea
-        assert.is_function(overwrite)
+        local overwrite = FarmLink.Probe.addCutterArea
+        assert.is_true(vehicleType.overwritten.addCutterArea[2] == overwrite)
 
         Engine.loadMission({})
         local combine = helper.tractor({ uniqueId = "combine1", x = 10 })

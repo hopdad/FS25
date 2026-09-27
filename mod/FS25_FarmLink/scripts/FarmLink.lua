@@ -25,8 +25,12 @@ local SOURCES = {
     "scripts/core/Persistence.lua",
     "scripts/core/EventLog.lua",
     "scripts/core/Context.lua",
+    "scripts/core/FarmStatsTap.lua",
     "scripts/core/Meta.lua",
+    "scripts/ledger/Gather.lua",
     "scripts/ledger/MoneyFunnel.lua",
+    "scripts/ledger/Harvest.lua",
+    "scripts/ledger/FieldWork.lua",
     "scripts/ledger/DayRollover.lua",
     "scripts/ledger/Prices.lua",
     "scripts/hooks/AIWorkers.lua",
@@ -52,7 +56,10 @@ if FarmLink.registry == nil then
     -- starts, meta.json included, and it is ready before any module emits.
     FarmLink.registry:add(FarmLink.EventLog)
     FarmLink.registry:add(FarmLink.Meta)
+    FarmLink.registry:add(FarmLink.FarmStatsTap)
     FarmLink.registry:add(FarmLink.MoneyFunnel)
+    FarmLink.registry:add(FarmLink.Harvest)
+    FarmLink.registry:add(FarmLink.FieldWork)
     -- A new day's rollover, then its prices: both listen to DAY_CHANGED, in this order.
     FarmLink.registry:add(FarmLink.DayRollover)
     FarmLink.registry:add(FarmLink.Prices)
@@ -250,9 +257,11 @@ function FarmLink.installProcessHooks()
         Log.warning("FSCareerMissionInfo.saveToXMLFile not found; %s will not be saved", FarmLink.Persistence.FILE_NAME)
     end
 
-    local funnelOk, funnelErr = pcall(FarmLink.MoneyFunnel.installProcessHooks)
-    if not funnelOk then
-        Log.error("money funnel hooks failed: %s", tostring(funnelErr))
+    for _, producer in ipairs({ FarmLink.MoneyFunnel, FarmLink.Harvest, FarmLink.FieldWork }) do
+        local ok, err = pcall(producer.installProcessHooks)
+        if not ok then
+            Log.error("%s hooks failed: %s", producer.name, tostring(err))
+        end
     end
 
     if FarmLink.Probe.ENABLED then

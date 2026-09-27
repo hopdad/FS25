@@ -155,6 +155,31 @@ function Game.fieldAt(x, z)
     return farmlandId, fieldId
 end
 
+---Whether a contract (mission) is active on the land at a world position. Work there is done for the
+---contract, not on the farm's own field (docs/LEDGER.md).
+function Game.isMissionAt(x, z)
+    if Game.num(x) == nil or Game.num(z) == nil then
+        return false
+    end
+    local id = Game.call(g_missionManager, "getMissionMapActiveMissionIdAtWorldPosition", x, z)
+    return type(id) == "number" and id ~= 0
+end
+
+---Where a vehicle works: its farmland and field, with the field left out on contract land.
+function Game.workPlace(vehicle)
+    local x, z = Game.vehiclePosition(vehicle)
+    local farmlandId, fieldId = Game.fieldAt(x, z)
+    if fieldId ~= nil and Game.isMissionAt(x, z) then
+        fieldId = nil
+    end
+    return farmlandId, fieldId
+end
+
+---Operating time in ms, as the vehicle channel reads it; nil when unknown.
+function Game.operatingMs(vehicle)
+    return type(vehicle) == "table" and Game.num(vehicle.operatingTime) or nil
+end
+
 ---The vehicle an AI job drives.
 function Game.jobVehicle(job)
     if type(job) ~= "table" then

@@ -131,14 +131,15 @@ function MoneyFunnel.installProcessHooks()
         return { kind = "vehicle", vehicleId = Game.vehicleId(self.vehicle) }
     end)
 
+    -- Credited to the machine pulling the tool, as field work is (ledger/FieldWork.lua).
     local function input(vehicle, fillTypeIndex)
         return {
             kind = "input",
             fillType = Game.fillTypeName(fillTypeIndex),
             liters = 0,
             fieldId = vehicleField(vehicle),
-            vehicleId = Game.vehicleId(vehicle),
-            -- The seedUsage stat reported inside this call adds the liters (see farmStatsWrapper).
+            vehicleId = Game.vehicleId(Game.call(vehicle, "getRootVehicle") or vehicle),
+            -- The seedUsage stat reported inside this call adds the liters (FarmStatsTap listener).
             usageStat = "seedUsage",
         }
     end
@@ -319,6 +320,14 @@ function MoneyFunnel.resetJob(jobId)
     end
 end
 
+-- The seedUsage stat a sowing machine reports inside its input context is the liters it used.
+FarmLink.FarmStatsTap.listen(function(_farmId, statName, delta)
+    local entry = FarmLink.Context.current()
+    if state ~= nil and type(entry) == "table" and entry.usageStat ~= nil and entry.usageStat == statName then
+        entry.liters = (entry.liters or 0) + (FarmLink.Game.num(delta) or 0)
+    end
+end)
+
 -- Module ------------------------------------------------------------------------------------------
 
 local function wrapAddMoney(mission)
@@ -335,36 +344,6 @@ local function wrapAddMoney(mission)
     mission.addMoney = wrapper
     state.wrap = { mission = mission, original = original, wrapper = wrapper, hadInstanceField = hadInstanceField }
     return "wrapped"
-end
-
--- The seedUsage stat a sowing machine reports inside its input context is the liters it used.
-local function wrapFarmStats(manager)
-    local original = type(manager) == "table" and manager.updateFarmStats or nil
-    if type(original) ~= "function" then
-        return
-    end
-    local hadInstanceField = rawget(manager, "updateFarmStats") ~= nil
-    local wrapper = function(self, farmId, statName, delta, ...)
-        local entry = FarmLink.Context.current()
-        if type(entry) == "table" and entry.usageStat ~= nil and entry.usageStat == statName then
-            entry.liters = (entry.liters or 0) + (FarmLink.Game.num(delta) or 0)
-        end
-        return original(self, farmId, statName, delta, ...)
-    end
-    manager.updateFarmStats = wrapper
-    state.statsWrap = { manager = manager, original = original, wrapper = wrapper, hadInstanceField = hadInstanceField }
-end
-
-local function unwrapFarmStats()
-    local wrap = state ~= nil and state.statsWrap or nil
-    if wrap == nil or rawget(wrap.manager, "updateFarmStats") ~= wrap.wrapper then
-        return
-    end
-    if wrap.hadInstanceField then
-        wrap.manager.updateFarmStats = wrap.original
-    else
-        rawset(wrap.manager, "updateFarmStats", nil)
-    end
 end
 
 local function unwrapAddMoney()
@@ -393,7 +372,6 @@ function MoneyFunnel.init(_ctx)
     else
         state.hook = MoneyFunnel.hooks ~= nil and MoneyFunnel.hooks.changeBalance and "changeBalance" or "missing"
     end
-    wrapFarmStats(g_farmManager)
 end
 
 function MoneyFunnel.update(dt, _ctx)
@@ -418,7 +396,6 @@ function MoneyFunnel.shutdown(_ctx)
     end
     MoneyFunnel.flush()
     unwrapAddMoney()
-    unwrapFarmStats()
     FarmLink.Context.reset()
     state = nil
 end

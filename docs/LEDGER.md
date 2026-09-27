@@ -170,6 +170,8 @@ Row-level security is on for every table, and every view runs as its caller
 | `session` | `core/EventLog.lua` | First line of every session; names the parent branch after a fork |
 | `money` | `ledger/MoneyFunnel.lua` | Every balance change, with its context |
 | `worker_start`, `worker_stop` | `hooks/AIWorkers.lua` | A hired worker starts or stops; the stop carries the job's wages |
+| `harvest` | `ledger/Harvest.lua` | Liters a combine threshed on a field, gathered per machine, field and fill type |
+| `field_work` | `ledger/FieldWork.lua` | Hectares sown, sprayed, fertilized or tilled on a field, with the input used |
 | `day_rollover` | `ledger/DayRollover.lua` | A new day, once per player farm, after everything gathered is written |
 | `prices` | `ledger/Prices.lua` | Session start and every new day |
 
@@ -189,9 +191,22 @@ context stack instead holds entries for up to 1 s; a scoped context cannot attac
 booking. Fuel, wages and bought inputs arrive every frame or so, and are gathered into one event with
 a `count` (F3). Everything else is written as it happens.
 
-**Not written yet:** `harvest`, `field_work`, `vehicle_added`, `vehicle_removed` and `vehicle_hours`.
-Also missing are the `shop` context and the hourly gathering of periodic money such as upkeep. Each
-waits on an answer from the P0 session's probe.
+**Harvest and field work.**
+- Harvest comes from `Combine.addCutterArea`, which returns the liters actually added.
+- Field work comes from what each tool reports through `updateFarmStats` inside its
+  `onEndWorkAreaProcessing`:
+  - `SowingMachine`: seeding, with the seed used.
+  - `Sprayer`: spraying (herbicide) or fertilizing, with what was sprayed.
+  - `Cultivator` and `Plow`: tillage.
+- Both are gathered per machine, field and kind, and written once the machine stops, every 30 s while
+  it goes on, when it moves to another field, and before a rollover or a save.
+- The field comes from the machine's position. On contract land it is left out.
+- Field work is credited to the machine pulling the tool, which has the operating hours, fuel and
+  wages. `workedHours` is that machine's operating time over the gathered stretch.
+
+**Not written yet:** `vehicle_added`, `vehicle_removed` and `vehicle_hours` (the fleet diff). Also
+missing are the `shop` context and the hourly gathering of periodic money such as upkeep. Each waits
+on an answer from the P0 session's probe.
 
 ## What the mod and bridge must send
 
