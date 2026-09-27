@@ -6,7 +6,7 @@ import { defaultFarmId, farmChoices, farmView, gameTime, type LiveState } from "
 import { AlertList, AlertToasts } from "./Alerts";
 import { FarmSummary } from "./FarmSummary";
 import { FleetList } from "./FleetList";
-import { ConnectionHelp, StatusBar } from "./StatusBar";
+import { ConnectionHelp, StatusBar, SyncHelp } from "./StatusBar";
 import { VehicleCard } from "./VehicleCard";
 import { WorkerBoard } from "./WorkerBoard";
 
@@ -50,6 +50,7 @@ export function LiveDashboard({ state, sendCommand, dismiss }: LiveDashboardProp
       <AlertToasts toasts={view.toasts} onDismiss={dismiss} />
       <main>
         <ConnectionHelp connection={state.connection} />
+        <SyncHelp sync={state.status?.sync} />
         <VehicleCard frame={state.vehicle} />
         <WorkerBoard
           jobs={view.jobs}

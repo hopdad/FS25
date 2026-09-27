@@ -9,6 +9,19 @@ import { FarmId, JobId, Uuid, VehicleId } from "./primitives";
 
 export const LIVE_PORT = 8790;
 
+/** Where the Supabase sync stands, for the page (P2). Absent while the bridge does not sync. */
+export const SyncSummary = z.object({
+  /** See the bridge's SyncEngine: `blocked` needs the player to act, `retrying` passes on its own. */
+  state: z.enum(["waiting", "synced", "sending", "retrying", "blocked"]),
+  /** Event lines read but not yet confirmed by Supabase. */
+  queued: z.int().min(0),
+  /** Seqs the mod never wrote (the gap check): those events are missing from the ledger. */
+  gaps: z.int().min(0),
+  lastSyncedAt: z.string().nullable(),
+  /** What went wrong last, while it still does. */
+  message: z.string().nullable(),
+});
+
 export const BridgeStatus = z.object({
   bridgeVersion: z.string(),
   /** False once no live frame has arrived for 15 s. */
@@ -18,6 +31,7 @@ export const BridgeStatus = z.object({
   mode: RuntimeMode.nullable(),
   modVersion: z.string().nullable(),
   gameVersion: z.string().nullable(),
+  sync: SyncSummary.nullable().optional(),
 });
 
 export const AlertKind = z.enum(["worker_stop", "fuel_low", "tank_full_soon", "game_offline"]);
@@ -70,6 +84,7 @@ export const CommandResponse = z.object({
 });
 
 export type BridgeStatus = z.infer<typeof BridgeStatus>;
+export type SyncSummary = z.infer<typeof SyncSummary>;
 export type Alert = z.infer<typeof Alert>;
 export type AlertKind = z.infer<typeof AlertKind>;
 export type AlertSeverity = z.infer<typeof AlertSeverity>;

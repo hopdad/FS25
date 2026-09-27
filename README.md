@@ -37,7 +37,9 @@ older save is loaded; the bridge checks every line and reports gaps. The log rec
 - machines bought, leased or sold, with the shop money paired with them, and their hours;
 - each day's rollover and prices.
 
-The sync to Supabase comes next. [docs/LEDGER.md](docs/LEDGER.md) describes the ledger.
+The bridge syncs the log to Supabase once signed in with an emailed code; it is tested through a
+real PostgREST on the local Postgres, since no Supabase project exists yet.
+[docs/LEDGER.md](docs/LEDGER.md) describes the ledger.
 
 | Document | What it is |
 | --- | --- |
@@ -93,7 +95,8 @@ pnpm format         # Biome, with fixes
 
 pnpm --filter @farmlink/bridge run start --dir <folder>             # serve the phone page
 pnpm --filter @farmlink/bridge run start --print --dir <folder>     # print live_vehicle.json frames
-pnpm --filter @farmlink/bridge run doctor --dir <folder>            # paths, freshness, P0 and P1 checks
+pnpm --filter @farmlink/bridge run doctor --dir <folder>            # paths, freshness, P0 to P2 checks
+pnpm --filter @farmlink/bridge run start --sign-in <email>          # sync to Supabase (supabase/README.md)
 pnpm --filter @farmlink/live-ui run build                           # rebuild the page after changing it
 pnpm --filter @farmlink/schema run json-schema                     # regenerate json-schema/ after a contract change
 
@@ -102,6 +105,8 @@ pnpm --filter @farmlink/bridge build:win                            # bridge/bin
 ```
 
 On Ubuntu, the Lua toolchain is `sudo apt-get install lua5.1 lua-busted lua-dkjson lua-filesystem`.
+The SQL tests need the Postgres binaries, and the sync test the `postgrest` binary (see
+[supabase/README.md](supabase/README.md)); each is skipped when missing.
 Elsewhere, install Lua 5.1 and run `luarocks install busted dkjson luafilesystem`.
 
 To see the whole pipeline without the game, run the mod against the stand-in engine, then serve

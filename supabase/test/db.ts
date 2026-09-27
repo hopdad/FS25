@@ -23,6 +23,8 @@ export type Query = <R extends pg.QueryResultRow = pg.QueryResultRow>(
 export type Caller = string | "anon";
 
 export interface Db {
+  /** This file's database, for a server of its own such as PostgREST. */
+  url: string;
   /** Superuser: seeds users and reads past row-level security. */
   admin: Query;
   /** Runs `fn` in one transaction as `caller`, committed unless it throws. */
@@ -66,6 +68,7 @@ export function useDatabase(): Db {
   };
 
   return {
+    url: serverUrl === null ? "" : databaseUrl(serverUrl, name),
     admin: query,
     async as(caller, fn) {
       await query("begin");

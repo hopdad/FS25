@@ -8,6 +8,7 @@ import { SaveSession } from "./live/session";
 import { fileLogger } from "./logfile";
 import { lanAddresses, pageUrl, terminalQr } from "./net";
 import { BridgeState, defaultStateDir } from "./state";
+import { openSync } from "./sync/setup";
 import { BRIDGE_VERSION } from "./version";
 import { pickSave, type SaveFolder } from "./watch/saves";
 
@@ -48,6 +49,7 @@ export async function serve(
     toFile(line);
   };
 
+  const sync = openSync({ stateDir: state.dir, env: environment.env, log });
   const hub = new LiveHub((alert) => log(`alert: ${alert.title}: ${alert.message}`));
   let session: SaveSession | undefined;
   const sendCommand = (request: CommandRequest): Promise<CommandResponse> =>
@@ -82,6 +84,8 @@ export async function serve(
     pageUrl(host, server.port, state.pairingToken),
   );
   log(`FarmLink bridge ${BRIDGE_VERSION}: reading ${root} (${source}); log in ${state.dir}`);
+  // The account's address stays out of the log, which players share for support.
+  log(sync.ready ? "syncing to Supabase (signed in)" : `not syncing to Supabase: ${sync.reason}`);
   if (options.resetToken) {
     log("new pairing token: pages opened with the old link must be reopened");
   }
@@ -113,7 +117,7 @@ export async function serve(
       return;
     }
     if (session?.saveId === save.saveId) return;
-    session?.stop();
+    void session?.stop();
     log(`following save ${save.saveId} (${save.meta?.saveName ?? "unnamed"})`);
     session = new SaveSession({
       saveId: save.saveId,
@@ -121,6 +125,7 @@ export async function serve(
       hub,
       numbering: state,
       log,
+      sync: sync.ready ? sync.engineFor(save.saveId) : undefined,
     });
     session.start();
   };
@@ -129,7 +134,8 @@ export async function serve(
   const rescan = setInterval(() => void choose(), options.rescanMs ?? 5000);
   await io.stopSignal();
   clearInterval(rescan);
-  session?.stop();
+  // Stopping sends what the sync still holds, for up to 5 s.
+  await session?.stop();
   await server.close();
   log("stopped");
   return 0;

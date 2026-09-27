@@ -179,6 +179,21 @@ select {
   background: var(--bad);
 }
 
+.dot.small {
+  width: 7px;
+  height: 7px;
+  animation: none;
+}
+
+.sync {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding-left: 10px;
+}
+
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
@@ -244,6 +259,11 @@ main {
   background: var(--bad-soft);
   color: var(--text);
   border-left: 4px solid var(--bad);
+}
+
+.banner.warn {
+  background: var(--warn-soft);
+  border-left-color: var(--warn);
 }
 
 footer {

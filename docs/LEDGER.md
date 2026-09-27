@@ -229,6 +229,34 @@ a `count` (F3). Everything else is written as it happens.
 **Not written yet:** the `shop` money context, and the hourly gathering of periodic money such as
 upkeep. Each waits on an answer from the P0 session's probe.
 
+## What the bridge sends
+
+`bridge/src/sync/` follows the active save's event log into Supabase, once the bridge is signed in
+([supabase/README.md](../supabase/README.md)). Without a project or a sign-in it works on the LAN
+only.
+
+- **As the player.** Every request carries the signed-in player's token, so row-level security
+  applies to every write. The first write creates the save's row, owned by that player. A save that
+  belongs to another account, or that the player may only view, stops the sync with that reason.
+- **Batches.** Up to 200 lines per request, or whatever is waiting after 5 s. Rows go in with
+  `on conflict do nothing`, so sending a line twice changes nothing.
+- **The cursor.** `sync-state.json` in the bridge's state folder holds, per branch, the highest seq
+  Supabase has confirmed. It moves only after a confirmed write. The event files themselves are the
+  queue: after a crash, or days offline, the next run reads them again and sends what lies past the
+  cursor.
+- **Failures.** No answer, a 5xx or a refused token: retried with backoff from 1 s to 5 min. A
+  refusal that needs the player (another account's save, missing migrations, a session that
+  expired): tried again every 5 min, and shown on the phone page and in `--doctor`.
+- **Refused lines.** A batch the database refuses is halved until the refused lines are found. Those
+  are recorded in `sync-state.json` and in the log, and the rest goes through.
+- **Snapshots.** The first fresh `live_farm.json` frame of each game day, per branch, as that day's
+  `snapshots` row.
+- **The phone page** shows the sync's state, and warns when it stopped or when the mod's log skipped
+  seqs (the gap check).
+
+Not done yet: deleting day files once synced, which waits on a retention rule (F3). A save the
+bridge is not following is synced the next time it is.
+
 ## What the mod and bridge must send
 
 These are requirements for the P2 event log (mod) and sync (bridge), which follow this schema.

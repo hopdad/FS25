@@ -9,6 +9,7 @@
     "typecheck": "tsc -p ."
   },
   "devDependencies": {
+    "@farmlink/bridge": "workspace:*",
     "@farmlink/schema": "workspace:*",
     "@types/node": "^22.19.0",
     "@types/pg": "^8.23.1",

@@ -163,6 +163,26 @@ describe.skipIf(!hasPostgres)("row-level security", () => {
       expect(rows).toEqual([{ owner_id: stranger }]);
     });
 
+    it("lets the owner create a save with an upsert, as the bridge does, and ignore a taken id", async () => {
+      const upsert = (id: string) => (query: Query) =>
+        query("insert into public.saves (id, name) values ($1, 'x') on conflict (id) do nothing", [
+          id,
+        ]);
+      const own = randomUUID();
+      await db.as(stranger, upsert(own));
+      await db.as(stranger, upsert(own));
+      await db.as(stranger, upsert(saveId));
+      const rows = await db.admin("select id, owner_id from public.saves where id = any($1)", [
+        [own, saveId],
+      ]);
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          { id: own, owner_id: stranger },
+          { id: saveId, owner_id: owner },
+        ]),
+      );
+    });
+
     it("refuses a save whose id is already taken by another player", async () => {
       await expect(db.as(stranger, (query) => createSave(query, saveId))).rejects.toThrow(
         /duplicate key|row-level security/,

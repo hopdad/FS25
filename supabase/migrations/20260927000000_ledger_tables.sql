@@ -159,9 +159,11 @@ alter table public.save_branches enable row level security;
 alter table public.events enable row level security;
 alter table public.snapshots enable row level security;
 
+-- The owner test comes first: an insert with `on conflict` (the bridge's upsert) checks the new row
+-- against this policy too, before the save is in my_saves().
 create policy saves_read on public.saves
   for select to authenticated
-  using (id in (select s.save_id from public.my_saves() s));
+  using (owner_id = (select auth.uid()) or id in (select s.save_id from public.my_saves() s));
 create policy saves_create on public.saves
   for insert to authenticated
   with check (owner_id = (select auth.uid()));

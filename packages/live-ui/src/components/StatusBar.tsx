@@ -1,4 +1,4 @@
-import type { BridgeStatus } from "@farmlink/schema";
+import type { BridgeStatus, SyncSummary } from "@farmlink/schema";
 import type { Connection, FarmChoice } from "../store";
 
 type Tone = "ok" | "warn" | "bad" | "wait";
@@ -23,6 +23,31 @@ export function describeConnection(
   }
 }
 
+/** Events waiting beyond this many mean the sync is catching up, not just between batches. */
+const BACKLOG = 200;
+
+/** The Supabase sync in a word or two, or null while the bridge does not sync. */
+export function describeSync(
+  sync: SyncSummary | null | undefined,
+): { tone: Tone; text: string } | null {
+  if (!sync) return null;
+  switch (sync.state) {
+    case "blocked":
+      return { tone: "bad", text: "Sync stopped" };
+    case "retrying":
+      return { tone: "warn", text: "Sync retrying" };
+    case "waiting":
+      return { tone: "wait", text: "Sync starting" };
+    case "sending":
+      if (sync.queued > BACKLOG) {
+        return { tone: "wait", text: `Syncing ${sync.queued.toLocaleString("en-US")} events` };
+      }
+      return { tone: "ok", text: "Synced" };
+    case "synced":
+      return { tone: "ok", text: "Synced" };
+  }
+}
+
 export interface StatusBarProps {
   connection: Connection;
   status: BridgeStatus | null;
@@ -36,6 +61,7 @@ export interface StatusBarProps {
 /** Sticky header: connection state, save, game clock, and a farm picker in multiplayer. */
 export function StatusBar({ connection, status, clock, farms, farmId, onFarm }: StatusBarProps) {
   const { tone, text } = describeConnection(connection, status);
+  const sync = describeSync(status?.sync);
   return (
     <header className="status">
       <div className="status-line">
@@ -49,6 +75,12 @@ export function StatusBar({ connection, status, clock, farms, farmId, onFarm }: 
         <span className="save">
           {status?.saveName ?? (status?.saveId ? "Unnamed save" : "No save")}
         </span>
+        {sync && (
+          <span className="sync" title={status?.sync?.message ?? undefined}>
+            <span className={`dot small ${sync.tone}`} aria-hidden="true" />
+            {sync.text}
+          </span>
+        )}
         {farms.length > 1 && (
           <select
             aria-label="Farm"
@@ -86,4 +118,26 @@ export function ConnectionHelp({ connection }: { connection: Connection }) {
     );
   }
   return null;
+}
+
+/** What the player should know about the sync: it stopped, or the mod's log skipped events. */
+export function SyncHelp({ sync }: { sync: SyncSummary | null | undefined }) {
+  if (!sync) return null;
+  return (
+    <>
+      {sync.state === "blocked" && (
+        <p className="banner warn">
+          Syncing to your FarmLink account stopped: {sync.message ?? "unknown reason"}. Your farm's
+          history stays on this computer and is sent once this is fixed.
+        </p>
+      )}
+      {sync.gaps > 0 && (
+        <p className="banner warn">
+          The mod's event log skipped {sync.gaps.toLocaleString("en-US")}{" "}
+          {sync.gaps === 1 ? "event" : "events"}, so your history is missing them. The bridge log
+          says where.
+        </p>
+      )}
+    </>
+  );
 }

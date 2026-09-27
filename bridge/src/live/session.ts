@@ -8,10 +8,12 @@ import {
   LiveFleet,
   LiveVehicle,
   Meta,
+  type SyncSummary,
 } from "@farmlink/schema";
 import { HeartbeatWriter } from "../commands/heartbeat";
 import { type CommandNumbering, CommandWriter } from "../commands/writer";
 import { EventLogWatcher } from "../events/watcher";
+import type { SyncEngine } from "../sync/engine";
 import { LiveWatcher } from "../watch/live";
 import { AlertEngine, type AlertRules } from "./alerts";
 import type { LiveHub } from "./hub";
@@ -33,6 +35,8 @@ export interface SaveSessionOptions {
   heartbeatMs?: number;
   commandTtlSec?: number;
   offlineAfterMs?: number;
+  /** The save's Supabase sync (P2), when the bridge is signed in. */
+  sync?: SyncEngine;
 }
 
 interface Startable {
@@ -56,6 +60,8 @@ export class SaveSession {
   private ready: Promise<void> = Promise.resolve();
   private online = false;
   private readonly now: () => number;
+  /** The branch meta.json names: the one this session writes to, for snapshots. */
+  private branchId: string | undefined;
 
   constructor(private readonly options: SaveSessionOptions) {
     this.saveId = options.saveId;
@@ -116,12 +122,16 @@ export class SaveSession {
       },
       onInvalid: invalid(FILES.liveFleet),
     });
+    const sync = options.sync;
     const farm = new LiveWatcher({
       file: file(FILES.liveFarm),
       schema: LiveFarm,
       pollMs: 1000 * scale,
       offlineAfterMs: Number.POSITIVE_INFINITY,
-      onFrame: (frame) => hub.publish("farm", frame),
+      onFrame: (frame, _text, info) => {
+        hub.publish("farm", frame);
+        if (sync && this.branchId && fresh(info.mtimeMs)) sync.offerSnapshot(frame, this.branchId);
+      },
       onInvalid: invalid(FILES.liveFarm),
     });
     const meta = new LiveWatcher({
@@ -129,17 +139,53 @@ export class SaveSession {
       schema: Meta,
       pollMs: 1000 * scale,
       offlineAfterMs: Number.POSITIVE_INFINITY,
-      onFrame: (m) =>
+      onFrame: (m) => {
         hub.setStatus({
           saveName: m.saveName,
           mode: m.mode,
           modVersion: m.modVersion,
           gameVersion: m.gameVersion,
-        }),
+        });
+        this.branchId = m.branchId;
+        sync?.setSave({ saveId: m.saveId, name: m.saveName, map: null, modVersion: m.modVersion });
+      },
       onInvalid: invalid(FILES.meta),
     });
-    this.events = new EventLogWatcher({ saveDir: dir, pollMs: 2000 * scale, log });
+    this.events = new EventLogWatcher({
+      saveDir: dir,
+      pollMs: 2000 * scale,
+      log,
+      onEvents: (events) => sync?.push(events),
+    });
     this.parts = [meta, vehicle, fleet, farm, this.acks, this.heartbeat, this.events];
+    if (sync) {
+      let timer: NodeJS.Timeout | undefined;
+      const publish = () => hub.setStatus({ sync: this.syncSummary() });
+      this.parts.push({
+        start: () => {
+          sync.start();
+          publish();
+          timer = setInterval(publish, 1000 * scale);
+        },
+        // The engine itself stops in stop(), which waits for its last write.
+        stop: () => clearInterval(timer),
+      });
+    }
+  }
+
+  /** The sync's state for the page, with the gap check's count. */
+  syncSummary(): SyncSummary | null {
+    const sync = this.options.sync;
+    if (!sync) return null;
+    const status = sync.status();
+    const gaps = this.events.sequence.gaps.reduce((sum, gap) => sum + gap.missing, 0);
+    return {
+      state: status.state,
+      queued: status.queued,
+      gaps,
+      lastSyncedAt: status.lastSyncedAt,
+      message: status.lastError,
+    };
   }
 
   get isOnline(): boolean {
@@ -160,10 +206,12 @@ export class SaveSession {
     for (const part of this.parts) part.start();
   }
 
-  stop(): void {
+  /** Stops following the save. Resolves once the sync has sent what it holds, or gave up (5 s). */
+  stop(): Promise<void> {
     for (const part of this.parts) part.stop();
     this.writer.close();
     this.options.hub.reset();
+    return this.options.sync?.stop() ?? Promise.resolve();
   }
 
   /** Sends a command to the game, or rejects it at once while the game is not running. */

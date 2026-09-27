@@ -101,6 +101,9 @@ importers:
 
   supabase:
     devDependencies:
+      '@farmlink/bridge':
+        specifier: workspace:*
+        version: link:../bridge
       '@farmlink/schema':
         specifier: workspace:*
         version: link:../packages/schema

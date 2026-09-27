@@ -163,6 +163,7 @@ describe.skipIf(!lua)("the mod's files, produced by its Lua", () => {
       fleetLoaded: "pass",
       moneyTypes: "pass",
       events: "pass",
+      sync: "pending",
     });
     expect(report.live.fleet.stops).toMatchObject([{ helper: "Sam", reason: "ERROR_OUT_OF_FUEL" }]);
     expect(report.checks.find((c) => c.id === "pause")?.detail).toBe(

@@ -4,6 +4,9 @@
   "private": true,
   "description": "Reads FarmLink's files from modSettings, serves the live page to your phone and relays worker commands",
   "type": "module",
+  "exports": {
+    "./sync": "./src/sync/index.ts"
+  },
   "scripts": {
     "start": "tsx src/main.ts",
     "doctor": "tsx src/main.ts --doctor",

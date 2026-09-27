@@ -1,4 +1,4 @@
-import type { CommandResponse } from "@farmlink/schema";
+import type { BridgeStatus, CommandResponse } from "@farmlink/schema";
 import { renderToString } from "preact-render-to-string";
 import { describe, expect, it } from "vitest";
 import { LiveDashboard } from "../src/components/LiveDashboard";
@@ -68,6 +68,37 @@ describe("the live dashboard", () => {
     expect(text).toContain("Game offline");
     const button = html.match(/<button[^>]*class="stop idle"[^>]*>Stop<\/button>/)?.[0] ?? "";
     expect(button).toContain(" disabled ");
+  });
+
+  it("shows the sync, and warns when it stops or the event log skipped lines", () => {
+    const withSync = (sync: NonNullable<BridgeStatus["sync"]>) =>
+      render(
+        reduce(fullState(), {
+          type: "message",
+          message: { type: "status", status: { ...status, sync } },
+          at: NOW,
+        }),
+      );
+    const quiet = { queued: 0, gaps: 0, lastSyncedAt: null, message: null };
+    expect(render(fullState()).text).not.toContain("Sync");
+    expect(withSync({ ...quiet, state: "synced" }).text).toContain("Riverbend Springs Synced");
+    expect(withSync({ ...quiet, state: "sending", queued: 12 }).text).toContain("Synced");
+    expect(withSync({ ...quiet, state: "sending", queued: 1250 }).text).toContain(
+      "Syncing 1,250 events",
+    );
+
+    const stopped = withSync({
+      ...quiet,
+      state: "blocked",
+      gaps: 3,
+      message: "save 5b8f belongs to another account",
+    });
+    expect(stopped.text).toContain("Sync stopped");
+    expect(stopped.text).toContain(
+      "Syncing to your FarmLink account stopped: save 5b8f belongs to another account.",
+    );
+    expect(stopped.text).toContain("The mod's event log skipped 3 events");
+    expect(stopped.html).toContain('title="save 5b8f belongs to another account"');
   });
 
   it("explains an out-of-date link and an unreachable bridge", () => {

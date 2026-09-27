@@ -306,6 +306,12 @@ in particular, may change P1 before its own in-game test ([P1_TEST.md](P1_TEST.m
 
   The simulated session reconciles money against the balance between rollovers, which is the P2
   exit check.
+- The bridge's Supabase sync: batches, backoff, isolating lines the database refuses, daily
+  snapshots, and the email-code sign-in (F6). Two changes to the handoff: the sync's cursor is the
+  highest confirmed seq per branch, in `sync-state.json`, rather than byte offsets in
+  `bridge-state.json`, so the event files are the on-disk queue; and synced day files are not
+  deleted until F3's retention rule is chosen. Tested through a real PostgREST, which found that an
+  upsert of a new save failed row-level security; `saves_read` now lets owners read their rows.
 - `supabase/`: the tables, row-level security, the branch rule and the analytics views
   ([LEDGER.md](LEDGER.md)).
 - `packages/schema/fixtures/ledger/`: golden fixtures that pin every formula.

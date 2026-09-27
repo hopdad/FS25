@@ -6,6 +6,7 @@ import { type Environment, type ResolvedRoot, resolveRoot } from "./config";
 import { eventChecks } from "./doctorEvents";
 import { ledgerChecks } from "./doctorLedger";
 import { collectLive, type LiveReport, liveChecks } from "./doctorLive";
+import { syncCheck } from "./doctorSync";
 import { defaultStateDir } from "./state";
 import { BRIDGE_VERSION, runtimeName } from "./version";
 import { readJsonFile } from "./watch/files";
@@ -303,9 +304,16 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   }
   const probeData = probeRead.ok ? probeRead.value : undefined;
 
+  const stateDir = options.stateDir ?? defaultStateDir(options.environment);
+  const sync = syncCheck({
+    stateDir,
+    env: options.environment.env,
+    saveId: active?.saveId,
+    meta: active?.meta,
+  });
   const live = await collectLive({
     saveDir: active?.dir,
-    stateDir: options.stateDir ?? defaultStateDir(options.environment),
+    stateDir,
     serverPort: options.serverPort === undefined ? LIVE_PORT : options.serverPort,
     now: now(),
   });
@@ -324,7 +332,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     probe,
     live,
     checks: [],
-    sync: "not configured (arrives in P2)",
+    sync: sync.detail,
   };
 
   report.checks = [
@@ -344,6 +352,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     ...liveChecks(live),
     ...ledgerChecks(probeData, await readHandleTest(root.root)),
     ...(await eventChecks(active?.dir, active?.meta)),
+    sync,
   ];
   return report;
 }

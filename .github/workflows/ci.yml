@@ -19,6 +19,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends lua5.1 lua-busted lua-dkjson lua-filesystem
 
+      - name: Install PostgREST, which the bridge's sync is tested through
+        run: |
+          curl -fsSL https://github.com/PostgREST/postgrest/releases/download/v13.0.4/postgrest-v13.0.4-linux-static-x86-64.tar.xz \
+            | sudo tar -xJ -C /usr/local/bin postgrest
+          postgrest --version
+
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -36,6 +42,7 @@ jobs:
           REQUIRE_LUA: "1"
           REQUIRE_BROWSER: "1"
           REQUIRE_POSTGRES: "1"
+          REQUIRE_POSTGREST: "1"
       - name: Lua specs
         run: pnpm test:lua
 

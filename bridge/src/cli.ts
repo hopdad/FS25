@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { createInterface } from "node:readline";
 import { parseArgs } from "node:util";
 import { PAGE_HTML } from "@farmlink/live-ui/page";
 import { FILES, LIVE_PORT, LiveVehicle } from "@farmlink/schema";
@@ -6,6 +7,8 @@ import { currentEnvironment, type Environment, resolveRoot } from "./config";
 import { formatDoctor, runDoctor } from "./doctor";
 import { formatVehicleFrame } from "./format";
 import { type ServeOptions, serve } from "./serve";
+import { defaultStateDir } from "./state";
+import { signIn, signOut } from "./sync/setup";
 import { BRIDGE_VERSION } from "./version";
 import { LiveWatcher } from "./watch/live";
 import { pickSave } from "./watch/saves";
@@ -16,6 +19,7 @@ Usage:
   farmlink-bridge [--dir <folder>] [--save <saveId>] [--port <n>] [--host <address>]
   farmlink-bridge --print [--dir <folder>] [--save <saveId>] [--json]
   farmlink-bridge --doctor [--dir <folder>] [--json]
+  farmlink-bridge --sign-in <email> | --sign-out
 
 Serves the live page to your phone on the local network and relays worker commands to the
 FS25_FarmLink mod. Prints the page's address and a QR code to scan.
@@ -33,6 +37,10 @@ Options:
   --json            With --print, raw JSON lines; with --doctor, the report as JSON.
   --doctor          Report paths, file freshness, the P0 exit criteria and the probe's answers.
   --observe <sec>   How long --doctor watches live_vehicle.json (default 5, 0 to skip).
+  --sign-in <email> Sign in to your FarmLink account with a code sent by email, so the bridge
+                    syncs your saves' history. Needs the project in supabase.json or in
+                    FARMLINK_SUPABASE_URL and FARMLINK_SUPABASE_ANON_KEY.
+  --sign-out        Stop syncing and forget the sign-in.
   -v, --version     Print the version.
   -h, --help        Print this help.
 `;
@@ -42,6 +50,8 @@ export interface Io {
   err: (line: string) => void;
   /** Resolves when the process is asked to stop. */
   stopSignal: () => Promise<void>;
+  /** One line typed into the console; absent when there is none. */
+  readLine?: () => Promise<string>;
 }
 
 const processIo: Io = {
@@ -51,6 +61,15 @@ const processIo: Io = {
     new Promise((resolve) => {
       process.once("SIGINT", () => resolve());
       process.once("SIGTERM", () => resolve());
+    }),
+  readLine: () =>
+    new Promise((resolve) => {
+      const lines = createInterface({ input: process.stdin });
+      lines.once("line", (line) => {
+        lines.close();
+        resolve(line);
+      });
+      lines.once("close", () => resolve(""));
     }),
 };
 
@@ -146,6 +165,17 @@ export async function main(
     return report.checks.some((c) => c.status === "fail") ? 1 : 0;
   }
 
+  const stateDir = values.state ?? defaultStateDir(environment);
+  if (values["sign-in"] !== undefined) {
+    const email = values["sign-in"].trim();
+    if (!/^[^@\s]+@[^@\s]+$/.test(email)) {
+      io.err("--sign-in takes your email address");
+      return 2;
+    }
+    return signIn({ stateDir, env: environment.env, email }, io);
+  }
+  if (values["sign-out"]) return signOut({ stateDir, env: environment.env }, io);
+
   if (values.print) {
     await follow(environment, { dir: values.dir, saveId: values.save, json: values.json }, io);
     return 0;
@@ -189,6 +219,8 @@ function parse(argv: string[]) {
       host: { type: "string" },
       state: { type: "string" },
       "reset-token": { type: "boolean" },
+      "sign-in": { type: "string" },
+      "sign-out": { type: "boolean" },
       "no-qr": { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
