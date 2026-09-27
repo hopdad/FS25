@@ -231,7 +231,7 @@ interface LedgerSummary {
   mode: string;
 }
 
-/** Runs mod/sim/ledger.lua: every event type, a save, two more events, then a reload that forks. */
+/** Runs mod/sim/ledger.lua: a day of play, a save, money after it, then a reload that forks. */
 function simulateLedger(profile: string, args: string[]): LedgerSummary {
   const stdout = execFileSync(lua as string, [join(repo, "mod/sim/ledger.lua"), profile, ...args], {
     encoding: "utf8",
@@ -280,8 +280,8 @@ describe.skipIf(!lua)("the event log written by the mod's Lua", () => {
         expect(validate(event), JSON.stringify(validate.errors)).toBe(true);
       }
 
-      // Saved at seq 17, two events after the save, then the reload forks from 17.
-      expect(summary.savedSeq).toBe(17);
+      // Two money events after the save, then the reload forks from the saved seq.
+      const saved = summary.savedSeq;
       const check = new SequenceCheck();
       for (const event of events) check.add(event);
       expect(check.gaps).toEqual([]);
@@ -290,24 +290,56 @@ describe.skipIf(!lua)("the event log written by the mod's Lua", () => {
         {
           branchId: summary.parentBranchId,
           first: 1,
-          last: 19,
-          events: 19,
+          last: saved + 2,
+          events: saved + 2,
           parentBranchId: null,
           forkSeq: null,
         },
         {
           branchId: summary.branchId,
-          first: 18,
-          last: 19,
-          events: 2,
+          first: saved + 1,
+          last: summary.lastSeq,
+          events: summary.lastSeq - saved,
           parentBranchId: summary.parentBranchId,
-          forkSeq: 17,
+          forkSeq: saved,
         },
       ]);
 
+      // The P2 exit check on the parent branch: between two rollovers of a farm, its money events
+      // add up to the change in its balance.
+      const parent = events.filter((e) => e.branchId === summary.parentBranchId);
+      let previous: number | undefined;
+      let total = 0;
+      let intervals = 0;
+      for (const event of parent) {
+        if (event.farmId !== 1) continue;
+        if (event.type === "money") total += event.data.amount;
+        if (event.type === "day_rollover") {
+          if (previous !== undefined) {
+            expect(event.data.balance - previous).toBeCloseTo(total, 6);
+            intervals += 1;
+          }
+          previous = event.data.balance;
+          total = 0;
+        }
+      }
+      expect(intervals).toBe(1);
+
+      // A worker's stop carries the wages written just before it.
+      const stop = parent.find((e) => e.type === "worker_stop");
+      const wage = parent.find((e) => e.type === "money" && e.data.context.kind === "wage");
+      expect(stop?.type === "worker_stop" && stop.data.wagesTotal).toBeCloseTo(
+        wage?.type === "money" ? -wage.data.amount : Number.NaN,
+        6,
+      );
+      expect((wage?.seq ?? 0) < (stop?.seq ?? 0)).toBe(true);
+
       const meta = Meta.parse(JSON.parse(readFileSync(join(summary.saveDir, "meta.json"), "utf8")));
       expect(meta.branchId).toBe(summary.branchId);
-      expect(meta.heads).toEqual({ [summary.parentBranchId]: 19, [summary.branchId]: 18 });
+      expect(meta.heads).toEqual({
+        [summary.parentBranchId]: saved + 2,
+        [summary.branchId]: saved + 1,
+      });
       const [doctor] = await eventChecks(summary.saveDir, meta);
       expect(doctor).toMatchObject({ status: "pass" });
       expect(doctor?.detail).toContain("on 2 branches");

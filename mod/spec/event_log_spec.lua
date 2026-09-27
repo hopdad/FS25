@@ -4,8 +4,15 @@ local lfs = require("lfs")
 describe("the event log", function()
     local Engine
 
+    -- The log on its own: no module writes events except those these specs emit.
+    local function fresh(opts)
+        local engine = helper.freshMod(opts)
+        helper.onlyModules({ "eventLog", "meta", "workers", "moneyFunnel" })
+        return engine
+    end
+
     before_each(function()
-        Engine = helper.freshMod()
+        Engine = fresh()
     end)
 
     local function eventsDir()
@@ -204,7 +211,7 @@ describe("the event log", function()
     end)
 
     it("keeps files open for the session where append mode is refused", function()
-        Engine = helper.freshMod({ blockAppend = true })
+        Engine = fresh({ blockAppend = true })
         Engine.loadMission({})
         FarmLink.EventLog.emit("money", 1, fuel(-60))
         Engine.run(1.1)
@@ -219,7 +226,7 @@ describe("the event log", function()
     end)
 
     it("opens a new file for each day while keeping files open", function()
-        Engine = helper.freshMod({ blockAppend = true })
+        Engine = fresh({ blockAppend = true })
         Engine.loadMission({})
         Engine.newDay()
         FarmLink.EventLog.emit("money", 1, fuel(-60))
@@ -257,7 +264,7 @@ describe("the event log", function()
     end)
 
     it("names Courseplay and AutoDrive in the session event when they are loaded", function()
-        Engine = helper.freshMod({ modsLoaded = { FS25_AutoDrive = true, FS25_Courseplay = true } })
+        Engine = fresh({ modsLoaded = { FS25_AutoDrive = true, FS25_Courseplay = true } })
         Engine.loadMission({})
         assert.are.same({ "FS25_Courseplay", "FS25_AutoDrive" }, readEvents()[1].data.integrations)
     end)

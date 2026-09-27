@@ -56,6 +56,51 @@ function Game.fillTypeName(index)
     return name
 end
 
+local moneyTypeNames = nil
+
+local function indexMoneyTypes()
+    moneyTypeNames = { source = MoneyType, byId = {}, unnamed = {} }
+    if type(MoneyType) ~= "table" then
+        return
+    end
+    for name, value in pairs(MoneyType) do
+        if type(value) == "table" and value.id ~= nil then
+            local existing = moneyTypeNames.byId[value.id]
+            if existing == nil or name < existing then
+                moneyTypeNames.byId[value.id] = name
+            end
+        end
+    end
+end
+
+---A money type's constant name (AI, SOLD_PRODUCTS), found by looking it up in the MoneyType table.
+---Types registered at map load, as fuel stations do, have no constant; they read
+---"id:<id> <statistic>/<title>".
+function Game.moneyTypeName(moneyType)
+    if type(moneyType) ~= "table" then
+        return tostring(moneyType)
+    end
+    if moneyTypeNames == nil or moneyTypeNames.source ~= MoneyType then
+        indexMoneyTypes()
+    end
+    local id = moneyType.id
+    local known = moneyTypeNames.byId[id]
+    if known == nil and id ~= nil and not moneyTypeNames.unnamed[id] then
+        -- A constant added after the index was built (by a mod, at map load): look again, once.
+        local unnamed = moneyTypeNames.unnamed
+        indexMoneyTypes()
+        moneyTypeNames.unnamed = unnamed
+        known = moneyTypeNames.byId[id]
+        if known == nil then
+            unnamed[id] = true
+        end
+    end
+    if known ~= nil then
+        return known
+    end
+    return string.format("id:%s %s/%s", tostring(id), tostring(moneyType.statistic), tostring(moneyType.title))
+end
+
 ---The vehicle's persistent id (set on the server; nil on a multiplayer client).
 function Game.vehicleId(vehicle)
     local id = Game.call(vehicle, "getUniqueId")

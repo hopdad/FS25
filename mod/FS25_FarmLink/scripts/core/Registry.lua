@@ -5,10 +5,11 @@
 -- ledger lives) or "any", and any of these functions:
 --   init(ctx)            mission start, after the ledger identity is known
 --   update(dt, ctx)      every frame; dt is real milliseconds
+--   beforeRollover(ctx)  a new day started: flush anything still being collected
 --   beforeSave(ctx, info) the career is being saved: flush anything still being collected
 --   checkpoint(ctx)      then the event log writes it and records its seq (the event log only)
 --   onSave(ctx, info)    after the career save wrote the savegame
---   shutdown(ctx)        mission end
+--   shutdown(ctx)        mission end, in reverse registration order
 
 FarmLink = FarmLink or {}
 
@@ -56,20 +57,33 @@ function Registry:isActive(module, isAuthority)
     return authority == "any" or isAuthority == true
 end
 
+function Registry:callOne(module, method, isAuthority, ...)
+    local fn = module[method]
+    if type(fn) == "function" and self:isActive(module, isAuthority) then
+        local ok, err = pcall(fn, ...)
+        if ok then
+            self.streak[module.name] = 0
+        else
+            self:recordFailure(module, method, err)
+        end
+    end
+end
+
 ---Calls method on every active module that has it, in registration order.
 ---@param method string
 ---@param isAuthority boolean whether this instance is the server (or single-player host)
 function Registry:call(method, isAuthority, ...)
     for _, module in ipairs(self.modules) do
-        local fn = module[method]
-        if type(fn) == "function" and self:isActive(module, isAuthority) then
-            local ok, err = pcall(fn, ...)
-            if ok then
-                self.streak[module.name] = 0
-            else
-                self:recordFailure(module, method, err)
-            end
-        end
+        self:callOne(module, method, isAuthority, ...)
+    end
+end
+
+---Calls method in reverse registration order: shutdown, so that a module stops after everything
+---registered later. Producers still flush into the event log, and hooks come off in the reverse of
+---the order they went on.
+function Registry:callReverse(method, isAuthority, ...)
+    for i = #self.modules, 1, -1 do
+        self:callOne(self.modules[i], method, isAuthority, ...)
     end
 end
 

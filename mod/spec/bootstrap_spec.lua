@@ -17,7 +17,8 @@ describe("FarmLink bootstrap", function()
         assert.are.equal(1, meta.beat)
         assert.are.equal("singleplayer", meta.mode)
         assert.are.equal(FarmLink.ctx.ledger.saveId, meta.saveId)
-        -- The event log's first line, the session event, is already written and claimed.
+        -- The event log starts before meta.json: its first line, the session event, is already
+        -- written and claimed.
         assert.are.equal(1, meta.lastSeq)
         assert.are.same({ [FarmLink.ctx.ledger.branchId] = 1 }, meta.heads)
         assert.are.equal("append", meta.stats.events.mode)

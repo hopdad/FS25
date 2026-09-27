@@ -12,6 +12,21 @@ function helper.freshMod(opts)
     return Engine
 end
 
+---Keeps only the named modules in FarmLink's registry, for specs about one part of the mod.
+function helper.onlyModules(names)
+    local keep = {}
+    for _, name in ipairs(names) do
+        keep[name] = true
+    end
+    local modules = {}
+    for _, module in ipairs(FarmLink.registry.modules) do
+        if keep[module.name] then
+            modules[#modules + 1] = module
+        end
+    end
+    FarmLink.registry.modules = modules
+end
+
 ---Reads and decodes a JSON file; JSON null decodes to helper.NULL.
 helper.NULL = dkjson.null
 function helper.readJson(path)

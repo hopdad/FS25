@@ -6,7 +6,9 @@
 --
 -- The registry lives in ctx.workers for the mission. Job ids restart every session, so a job is only
 -- identified within one. Stops go into a short ring that the fleet channel carries to the bridge,
--- which turns them into alerts (P1); from P2 they are also ledger events.
+-- which turns them into alerts (P1). Each start and stop is also a ledger event (P2): worker_stop
+-- carries the job's wages, which the money funnel has booked by then, because AISystem stops the job
+-- (AIJob.stop pays what is left) before it publishes AI_JOB_STOPPED.
 
 FarmLink = FarmLink or {}
 
@@ -47,8 +49,18 @@ function AIWorkers.onJobStarted(ctx, job, startFarmId)
     local workers = ctx.workers
     local key = tostring(job.jobId)
     if workers.active[key] == nil then
-        workers.active[key] = describeJob(job, startFarmId)
+        local entry = describeJob(job, startFarmId)
+        workers.active[key] = entry
         workers.order[#workers.order + 1] = key
+        FarmLink.MoneyFunnel.resetJob(key)
+        if entry.vehicleId ~= nil then
+            FarmLink.EventLog.emit("worker_start", entry.farmId, {
+                jobId = entry.jobId,
+                vehicleId = entry.vehicleId,
+                jobType = entry.jobType or "UNKNOWN",
+                fieldId = FarmLink.Json.orNull(entry.fieldId),
+            })
+        end
     end
     ctx.fleetDirty = true
 end
@@ -91,6 +103,18 @@ function AIWorkers.onJobStopped(ctx, job, aiMessage)
         table.remove(workers.stops, 1)
     end
     ctx.fleetDirty = true
+
+    -- The job's last wages first, so they precede its worker_stop in the log.
+    FarmLink.MoneyFunnel.flushJob(key)
+    if entry.vehicleId ~= nil then
+        FarmLink.EventLog.emit("worker_stop", entry.farmId, {
+            jobId = entry.jobId,
+            vehicleId = entry.vehicleId,
+            reason = FarmLink.Game.aiMessageName(aiMessage),
+            durationMin = duration or 0,
+            wagesTotal = FarmLink.MoneyFunnel.jobWages(key),
+        })
+    end
 end
 
 ---Running jobs in start order.

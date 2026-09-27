@@ -134,6 +134,7 @@ describe("the ledger probe", function()
             ["AIJob.stop"] = "wrapped",
             ["WearableRepairEvent.run"] = "wrapped",
             ["SowingMachine.onEndWorkAreaProcessing"] = "wrapped",
+            ["Sprayer.onStartWorkAreaProcessing"] = "wrapped",
             ["Sprayer.onEndWorkAreaProcessing"] = "wrapped",
         }, context.hooks)
         local byType = context.byMoneyType

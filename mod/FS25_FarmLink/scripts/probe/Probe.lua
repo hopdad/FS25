@@ -103,31 +103,11 @@ local function fillTypeName(index)
     return nil
 end
 
-local moneyTypeNames = nil
-
 local function moneyTypeName(moneyType)
     if type(moneyType) ~= "table" then
         return describe(moneyType)
     end
-    if moneyTypeNames == nil then
-        moneyTypeNames = {}
-        if type(MoneyType) == "table" then
-            for name, value in pairs(MoneyType) do
-                if type(value) == "table" and value.id ~= nil then
-                    local existing = moneyTypeNames[value.id]
-                    if existing == nil or name < existing then
-                        moneyTypeNames[value.id] = name
-                    end
-                end
-            end
-        end
-    end
-    local known = moneyTypeNames[moneyType.id]
-    if known ~= nil then
-        return known
-    end
-    -- Types made with MoneyType.register at map load (fuel stations use one) have no constant name.
-    return string.format("id:%s %s/%s", tostring(moneyType.id), tostring(moneyType.statistic), tostring(moneyType.title))
+    return FarmLink.Game.moneyTypeName(moneyType)
 end
 
 -- Static sections, computed once per mission ------------------------------------------------------
@@ -904,6 +884,10 @@ end
 function Probe.shutdown(ctx)
     if state == nil then
         return
+    end
+    -- Modules shut down in reverse order, so the ledger probe is still running: let it finish first.
+    if FarmLink.LedgerProbe ~= nil and type(FarmLink.LedgerProbe.finish) == "function" then
+        pcall(FarmLink.LedgerProbe.finish)
     end
     pcall(Probe.write, ctx)
     unwrapAddMoney()

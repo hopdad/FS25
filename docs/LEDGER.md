@@ -163,6 +163,36 @@ Row-level security is on for every table, and every view runs as its caller
   needed.
 - **The bridge writes as the signed-in player**, never with the service role.
 
+## What the mod writes today
+
+| Event | Written by | When |
+| --- | --- | --- |
+| `session` | `core/EventLog.lua` | First line of every session; names the parent branch after a fork |
+| `money` | `ledger/MoneyFunnel.lua` | Every balance change, with its context |
+| `worker_start`, `worker_stop` | `hooks/AIWorkers.lua` | A hired worker starts or stops; the stop carries the job's wages |
+| `day_rollover` | `ledger/DayRollover.lua` | A new day, once per player farm, after everything gathered is written |
+| `prices` | `ledger/Prices.lua` | Session start and every new day |
+
+**The money funnel.** Each booking takes its context from the game function it happened in:
+
+| Context | Game function |
+| --- | --- |
+| `sale` | `SellingStation.sellFillType` |
+| `fuel` | `FillTrigger.fillVehicle` |
+| `wage` | `AIJob.updateCost` and `AIJob.stop` |
+| `input` | Seed a hired worker buys in `SowingMachine.onEndWorkAreaProcessing`; fertilizer it buys in `Sprayer.onStartWorkAreaProcessing` |
+| `vehicle` | Repairs, in `WearableRepairEvent.run` |
+| `none` | Everything else |
+
+The context is set for the duration of that call and read by the booking inside it. The handoff's
+context stack instead holds entries for up to 1 s; a scoped context cannot attach to an unrelated
+booking. Fuel, wages and bought inputs arrive every frame or so, and are gathered into one event with
+a `count` (F3). Everything else is written as it happens.
+
+**Not written yet:** `harvest`, `field_work`, `vehicle_added`, `vehicle_removed` and `vehicle_hours`.
+Also missing are the `shop` context and the hourly gathering of periodic money such as upkeep. Each
+waits on an answer from the P0 session's probe.
+
 ## What the mod and bridge must send
 
 These are requirements for the P2 event log (mod) and sync (bridge), which follow this schema.

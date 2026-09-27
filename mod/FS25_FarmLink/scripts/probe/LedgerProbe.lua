@@ -13,8 +13,9 @@
 --   vehicles    VEHICLE_REMOVED, which the fleet diff pairs with vehicle sales
 --   context     money booked inside the functions the money funnel will read its context from:
 --               wages (AIJob.updateCost, AIJob.stop), sales, fuel, repairs (WearableRepairEvent.run),
---               and seed and fertilizer a hired worker buys (SowingMachine and Sprayer
---               onEndWorkAreaProcessing, which also carry the hectares worked)
+--               seed a hired worker buys (SowingMachine.onEndWorkAreaProcessing) and fertilizer it
+--               buys (Sprayer.onStartWorkAreaProcessing, through getExternalFill); plus the hectares
+--               both report in onEndWorkAreaProcessing
 --   finances    each farm's finance statistics at DAY_CHANGED and PERIOD_CHANGED, and the order the
 --               two arrive in. FarmStats keeps a bucket per month and archives it on PERIOD_CHANGED,
 --               so the day rollover has to difference snapshots; this shows how
@@ -444,6 +445,7 @@ function LedgerProbe.installProcessHooks()
         LedgerProbe.fuelHookInstalled = true
     end
     LedgerProbe.contextHooks = {}
+    -- kind nil: only run `before`, without a money context.
     local function wrap(owner, ownerName, method, kind, before)
         if type(owner) ~= "table" or type(owner[method]) ~= "function" then
             LedgerProbe.contextHooks[ownerName .. "." .. method] = "missing"
@@ -453,6 +455,9 @@ function LedgerProbe.installProcessHooks()
         owner[method] = function(self, ...)
             if before ~= nil and state ~= nil then
                 pcall(before, state, self)
+            end
+            if kind == nil then
+                return original(self, ...)
             end
             return inContext(kind, original, self, ...)
         end
@@ -468,7 +473,9 @@ function LedgerProbe.installProcessHooks()
     wrap(SowingMachine, "SowingMachine", "onEndWorkAreaProcessing", "sowing", function(s, vehicle)
         LedgerProbe.recordWorkedArea(s, "sowing", vehicle.spec_sowingMachine)
     end)
-    wrap(Sprayer, "Sprayer", "onEndWorkAreaProcessing", "spraying", function(s, vehicle)
+    -- A hired sprayer buys what it sprays in getExternalFill, called from onStartWorkAreaProcessing.
+    wrap(Sprayer, "Sprayer", "onStartWorkAreaProcessing", "spraying")
+    wrap(Sprayer, "Sprayer", "onEndWorkAreaProcessing", nil, function(s, vehicle)
         LedgerProbe.recordWorkedArea(s, "spraying", vehicle.spec_sprayer)
     end)
 end
@@ -689,6 +696,13 @@ function LedgerProbe.update(dt, _ctx)
         if s.handleElapsedMs >= LedgerProbe.HANDLE_DELAY_MS then
             finishHandle(s)
         end
+    end
+end
+
+---Completes the kept-open handle test now, so the P0 probe's last write at mission end includes it.
+function LedgerProbe.finish()
+    if state ~= nil then
+        pcall(finishHandle, state)
     end
 end
 

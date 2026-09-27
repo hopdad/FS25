@@ -285,7 +285,7 @@ end
 
 -- Fill types --------------------------------------------------------------------------------------
 
-local FILL_TYPES = { "UNKNOWN", "DIESEL", "WHEAT", "DEF", "AIR", "SEEDS", "BARLEY", "FLOUR" }
+local FILL_TYPES = { "UNKNOWN", "DIESEL", "WHEAT", "DEF", "AIR", "SEEDS", "BARLEY", "FLOUR", "LIQUIDFERTILIZER" }
 local FILL_TYPE_INDEX = {}
 for index, name in ipairs(FILL_TYPES) do
     FILL_TYPE_INDEX[name] = index
@@ -561,18 +561,44 @@ local function newAIJobClass()
 end
 
 -- The work-area specializations that buy inputs for a hired worker. The game dispatches their
--- onEndWorkAreaProcessing by name at call time (SpecializationUtil.raiseEvent), so a mod can wrap it.
-local function newWorkAreaSpec(specKey, statName, moneyTypeName, settingName)
+-- listeners by name at call time (SpecializationUtil.raiseEvent), so a mod can wrap them.
+-- SowingMachine books bought seed in onEndWorkAreaProcessing, after the seedUsage stat; Sprayer books
+-- bought fertilizer in getExternalFill, which onStartWorkAreaProcessing calls, and reports its
+-- hectares and usage in onEndWorkAreaProcessing.
+local function newSowingMachine()
     local Spec = {}
     function Spec.onEndWorkAreaProcessing(self, _dt, _hasProcessed)
-        local params = self[specKey].workAreaParameters
+        local spec = self.spec_sowingMachine
+        local params = spec.workAreaParameters
         if params.lastChangedArea > 0 then
+            local farmId = self:getOwnerFarmId()
             local ha = MathUtil.areaToHa(params.lastStatsArea, g_currentMission:getFruitPixelsToSqm())
-            g_farmManager:updateFarmStats(self:getOwnerFarmId(), statName, ha)
-            if self:getIsAIActive() and g_currentMission.missionInfo[settingName] then
-                g_currentMission:addMoney(-(params.inputPrice or 0), self:getOwnerFarmId(), MoneyType[moneyTypeName])
+            g_farmManager:updateFarmStats(farmId, "seedUsage", params.usage or 0)
+            g_farmManager:updateFarmStats(farmId, "sownHectares", ha)
+            if self:getIsAIActive() and g_currentMission.missionInfo.helperBuySeeds then
+                g_currentMission:addMoney(-(params.inputPrice or 0), farmId, MoneyType.PURCHASE_SEEDS)
             end
         end
+    end
+    return Spec
+end
+
+local function newSprayer()
+    local Spec = {}
+    function Spec.onStartWorkAreaProcessing(self, _dt)
+        local params = self.spec_sprayer.workAreaParameters
+        -- getExternalFill: a hired worker buys what it sprays.
+        if self:getIsAIActive() and g_currentMission.missionInfo.helperBuyFertilizer then
+            g_currentMission:addMoney(-(params.inputPrice or 0), self:getOwnerFarmId(), MoneyType.PURCHASE_FERTILIZER)
+            params.sprayFillType = params.pendingFillType
+            params.usage = params.pendingUsage
+        end
+    end
+    function Spec.onEndWorkAreaProcessing(self, _dt, _hasProcessed)
+        local params = self.spec_sprayer.workAreaParameters
+        local farmId = self:getOwnerFarmId()
+        g_farmManager:updateFarmStats(farmId, "sprayedHectares", MathUtil.areaToHa(params.lastStatsArea, 1))
+        g_farmManager:updateFarmStats(farmId, "sprayUsage", params.usage or 0)
     end
     return Spec
 end
@@ -949,8 +975,8 @@ function Engine.install(opts)
     }
     FinanceStats = { statNames = FINANCE_STAT_NAMES }
     AIJob = newAIJobClass()
-    SowingMachine = newWorkAreaSpec("spec_sowingMachine", "sownHectares", "PURCHASE_SEEDS", "helperBuySeeds")
-    Sprayer = newWorkAreaSpec("spec_sprayer", "sprayedHectares", "PURCHASE_FERTILIZER", "helperBuyFertilizer")
+    SowingMachine = newSowingMachine()
+    Sprayer = newSprayer()
     MathUtil = {
         areaToHa = function(area, pixelsToSqm)
             return area * pixelsToSqm / 10000
@@ -1111,13 +1137,27 @@ function Engine.repair(vehicle, price)
     WearableRepairEvent.new(vehicle, false):run({})
 end
 
----One frame of sowing (or, with the sprayer spec, spraying): the area worked and what a hired
----worker paid for its seed. Dispatched by name, as SpecializationUtil.raiseEvent does.
-function Engine.workArea(vehicle, spec, sqm, inputPrice)
-    local key = spec == Sprayer and "spec_sprayer" or "spec_sowingMachine"
-    vehicle[key] = {
-        workAreaParameters = { lastChangedArea = sqm, lastStatsArea = sqm, inputPrice = inputPrice },
-    }
+---One frame of sowing (or, with the sprayer spec, spraying): the area worked, the liters used and
+---what a hired worker paid for them. Dispatched by name, as SpecializationUtil.raiseEvent does.
+function Engine.workArea(vehicle, spec, sqm, inputPrice, liters)
+    if spec == Sprayer then
+        vehicle.spec_sprayer = {
+            workAreaParameters = {
+                lastChangedArea = sqm,
+                lastStatsArea = sqm,
+                inputPrice = inputPrice,
+                pendingFillType = FILL_TYPE_INDEX.LIQUIDFERTILIZER,
+                pendingUsage = liters or 0,
+                usage = liters or 0,
+            },
+        }
+        Sprayer["onStartWorkAreaProcessing"](vehicle, 16)
+    else
+        vehicle.spec_sowingMachine = {
+            seedFillType = FILL_TYPE_INDEX.SEEDS,
+            workAreaParameters = { lastChangedArea = sqm, lastStatsArea = sqm, inputPrice = inputPrice, usage = liters or 0 },
+        }
+    end
     spec["onEndWorkAreaProcessing"](vehicle, 16, true)
 end
 

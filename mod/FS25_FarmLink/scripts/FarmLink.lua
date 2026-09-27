@@ -24,7 +24,11 @@ local SOURCES = {
     "scripts/core/Registry.lua",
     "scripts/core/Persistence.lua",
     "scripts/core/EventLog.lua",
+    "scripts/core/Context.lua",
     "scripts/core/Meta.lua",
+    "scripts/ledger/MoneyFunnel.lua",
+    "scripts/ledger/DayRollover.lua",
+    "scripts/ledger/Prices.lua",
     "scripts/hooks/AIWorkers.lua",
     "scripts/collectors/Vehicle.lua",
     "scripts/collectors/Fleet.lua",
@@ -48,6 +52,10 @@ if FarmLink.registry == nil then
     -- starts, meta.json included, and it is ready before any module emits.
     FarmLink.registry:add(FarmLink.EventLog)
     FarmLink.registry:add(FarmLink.Meta)
+    FarmLink.registry:add(FarmLink.MoneyFunnel)
+    -- A new day's rollover, then its prices: both listen to DAY_CHANGED, in this order.
+    FarmLink.registry:add(FarmLink.DayRollover)
+    FarmLink.registry:add(FarmLink.Prices)
     -- Workers first: the fleet channel reads the worker registry.
     FarmLink.registry:add(FarmLink.AIWorkers)
     FarmLink.registry:add(FarmLink.VehicleCollector)
@@ -193,7 +201,7 @@ function FarmLink:deleteMap()
     local ctx = FarmLink.ctx
     FarmLink.ctx = nil
     if ctx ~= nil and ctx.isAuthority then
-        FarmLink.registry:call("shutdown", true, ctx)
+        FarmLink.registry:callReverse("shutdown", true, ctx)
     end
 end
 
@@ -240,6 +248,11 @@ function FarmLink.installProcessHooks()
         FarmLink.saveHookInstalled = true
     else
         Log.warning("FSCareerMissionInfo.saveToXMLFile not found; %s will not be saved", FarmLink.Persistence.FILE_NAME)
+    end
+
+    local funnelOk, funnelErr = pcall(FarmLink.MoneyFunnel.installProcessHooks)
+    if not funnelOk then
+        Log.error("money funnel hooks failed: %s", tostring(funnelErr))
     end
 
     if FarmLink.Probe.ENABLED then
